@@ -1,0 +1,19 @@
+
+    {
+  "$schema": "https://vega.github.io/schema/vega/v3.0.json",
+  "description": "Markdown on Vega",
+  "width": 990,
+  "height": 120,
+  "background": "#dedede",
+  "padding": 10,
+  "autosize": "pad",
+  "title": {
+          "text": "НАЗВАНИЕ",
+          "offset": 10,
+          "fontsize": 20,
+          "orient": "top",
+          "anchor": "start",
+          "color": {"value": "#1"}
+      
+}
+    }
