@@ -1,0 +1,51 @@
+  "data": [
+    {
+      "name": "source_0",
+      "url": {
+        "index": "metrics-mappings-sbergilestruct",
+        "%context_query%": "@timestamp",
+        "body": {
+          "size": 0,
+          "aggs": {"squads": {"terms": {"field": "squad.keyword", "size": 10000}}}
+        }
+      },
+      "format": {"type": "json", "property": "aggregations.squads.buckets"}
+    },
+    {
+      "name": "source_1",
+      "url": {
+        "index": "metrics-jenkins-*",
+        "%context_query%": "@timestamp",
+        "body": {
+          "size": 0,
+          "aggs": {
+            "squads": {
+              "terms": {"field": "squad.keyword", "size": 10000},
+              "aggs": {
+                "flt": {
+                  "filters": {
+                    "filters": {
+                      "success": {
+                        "query_string": {
+                          "query": "result:(SUCCESS) AND eventType:(build) AND tags:(build)"
+                        }
+                      },
+                      "failure": {
+                        "query_string": {
+                          "query": "result:(FAILURE) AND eventType:(build) AND tags:(build)"
+                        }
+                      }
+                    }
+                  },
+                  "aggs": {
+                    "distinct_builds": {"cardinality": {"field": "buildUrl.keyword"}}
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {"type": "json", "property": "aggregations.squads.buckets"}
+    }
+  ]
