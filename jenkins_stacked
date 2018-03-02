@@ -49,3 +49,267 @@
       "format": {"type": "json", "property": "aggregations.squads.buckets"}
     }
   ]
+  
+  
+  source_1 buckets:
+  
+  {
+  "took": 440,
+  "timed_out": false,
+  "_shards": {
+    "total": 59,
+    "successful": 59,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": 8859651,
+    "max_score": 0,
+    "hits": []
+  },
+  "aggregations": {
+    "squads": {
+      "doc_count_error_upper_bound": 0,
+      "sum_other_doc_count": 0,
+      "buckets": [
+        {
+          "key": "[ЕФС][RUN] Лидеры компетенций #draft",
+          "doc_count": 264243,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              },
+              "success": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "[ЕФС] Технологическое ядро #draft",
+          "doc_count": 263258,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              },
+              "success": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "ЕФС. Управление качеством разработки и релизной политикой",
+          "doc_count": 247303,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              },
+              "success": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "ЕФС. Администраторы сред разработки ЕФС",
+          "doc_count": 246608,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              },
+              "success": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "[ЕФС] UI-библиотека Web #draft",
+          "doc_count": 213551,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              },
+              "success": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "DevOps and PM Task Force team (CTO digital)",
+          "doc_count": 143179,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 252,
+                "distinct_jobs": {
+                  "value": 245
+                }
+              },
+              "success": {
+                "doc_count": 2430,
+                "distinct_jobs": {
+                  "value": 2361
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "[ЕФС] РУ.Инструменты DevOps в платформе ЕФС",
+          "doc_count": 142390,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 1405,
+                "distinct_jobs": {
+                  "value": 1405
+                }
+              },
+              "success": {
+                "doc_count": 12855,
+                "distinct_jobs": {
+                  "value": 12842
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "Мессенджер Android",
+          "doc_count": 118571,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 73,
+                "distinct_jobs": {
+                  "value": 73
+                }
+              },
+              "success": {
+                "doc_count": 342,
+                "distinct_jobs": {
+                  "value": 342
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "Android Client App",
+          "doc_count": 109830,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              },
+              "success": {
+                "doc_count": 2,
+                "distinct_jobs": {
+                  "value": 2
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "[ЕФС] Виртуальная карта #draft",
+          "doc_count": 109721,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              },
+              "success": {
+                "doc_count": 5,
+                "distinct_jobs": {
+                  "value": 5
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "Sberbank ID Payment",
+          "doc_count": 109680,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 0,
+                "distinct_jobs": {
+                  "value": 0
+                }
+              },
+              "success": {
+                "doc_count": 1,
+                "distinct_jobs": {
+                  "value": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "key": "Transition.Тестирование МП #draft",
+          "doc_count": 109292,
+          "flt": {
+            "buckets": {
+              "failure": {
+                "doc_count": 3,
+                "distinct_jobs": {
+                  "value": 3
+                }
+              },
+              "success": {
+                "doc_count": 4,
+                "distinct_jobs": {
+                  "value": 4
+                }
+              }
+            }
+          }
+        }
+        
