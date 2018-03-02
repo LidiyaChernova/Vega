@@ -313,3 +313,98 @@
           }
         }
         
+        
+        + muss buckets
+        
+        
+        {
+  "took": 9,
+  "timed_out": false,
+  "_shards": {
+    "total": 3,
+    "successful": 3,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": 13697,
+    "max_score": 0,
+    "hits": []
+  },
+  "aggregations": {
+    "squads": {
+      "doc_count_error_upper_bound": 0,
+      "sum_other_doc_count": 0,
+      "buckets": [
+        {
+          "key": "[ЕФС][Change] Тестирование.Сервис тестирования базовых технологических сервисов и инструментов ЕФС",
+          "doc_count": 67
+        },
+        {
+          "key": "Transition.Тестирование МП",
+          "doc_count": 45
+        },
+        {
+          "key": "[ЕФС][RUN] Тестирование.Сервис тестирования прикладных и канально-специфичных сервисов",
+          "doc_count": 43
+        },
+        {
+          "key": "Блок Финансы.ALM #draft",
+          "doc_count": 37
+        },
+        {
+          "key": "Transition.Тестирование АС @900, Мессенджер",
+          "doc_count": 36
+        },
+        {
+          "key": "[ВНЕШНЕЕ][TECH]Тестирование CRM 3",
+          "doc_count": 34
+        },
+        {
+          "key": "ЕК и МГ #draft",
+          "doc_count": 34
+        },
+        {
+          "key": "ППРБ.К. Процессинг. SmartVista QA #draft",
+          "doc_count": 31
+        },
+        {
+          "key": "[ЕФС][Change] Тестирование.Обеспечение качества",
+          "doc_count": 30
+        },
+        {
+          "key": "ППРБ.К. Бизнес-хаб. ЕКПиТ.Сервисы 2",
+          "doc_count": 29
+        },
+        {
+          "key": "Antifraud and reliability #draft",
+          "doc_count": 28
+        },
+        {
+          "key": "[ЕФС] Черный Аист (РМ КМ ЦКР)",
+          "doc_count": 28
+        },
+        {
+          "key": "[RUN] Тестирование. ДК",
+          "doc_count": 26
+        },
+        {
+          "key": "[К УДАЛЕНИЮ][TECH]Тестирование компонентных сервисов",
+          "doc_count": 26
+        },
+        {
+          "key": "ЕФС.Риски #draft",
+          "doc_count": 24
+        },
+        {
+          "key": "CRM продукты КБ",
+          "doc_count": 23
+        },
+        {
+          "key": "[ЕФС] Б.УБ. Тестирование. Качество УБ",
+          "doc_count": 23
+        },
+        {
+          "key": "Обращения. Базовые сценарии в CRM - бэк",
+          "doc_count": 23
+        }
