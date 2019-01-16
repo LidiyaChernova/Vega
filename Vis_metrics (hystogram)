@@ -1,0 +1,751 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v3.0.json",
+  "autosize": {
+    "type": "fit"
+  },
+  "title": {
+    "text": "BitBucket Activity"
+  },
+  
+  "data": [
+    {
+      "comment": "Выводим перечень кодов команд и их единственных названий выбранного трайба",
+      "name": "squad_code",
+      "url": {
+        "index": "metrics-mappings-sbergilestruct",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "time_zone": "Europe/Moscow",
+                      "gte": "now-7d",
+                      "lte": "now"
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "squads": {
+                  "terms": {
+                    "field": "squad.keyword",
+                    "size": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads_code.buckets"
+      }
+    },
+    {
+      "comment": "Выводим команды с исключениями по метрике в ИСУ",
+      "name": "restrictions",
+      "url": {
+        "index": "metrics-mappings-isu-restrictions-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "query_string": {
+                    "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0"
+                  }
+                },
+                {
+                  "range": {
+                    "date_end": {
+                      "time_zone": "Europe/Moscow",
+                      "gt": "now+1d"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 100000
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads_code.buckets"
+      },
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.key) >= 0"
+        }
+      ]
+    },
+    {
+      "comment": "считаем количество команд в BitBucket за период и количество команд с отклонениями",
+      "name": "auto_bitbucket",
+      "url": {
+        "index": "metrics-bitbucket-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "squad.buckets"
+          ],
+          "as": [
+            "squad"
+          ]
+        },
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "squad.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "n_squads_bitbucket"
+          ],
+          "groupby": [
+            "key"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "n_of_squads - n_of_restrictors - datum.n_squads_bitbucket",
+          "as": "n_squads_deviation"
+        }
+      ]
+    },
+    {
+      "comment": "считаем количество выставленных задач",
+      "name": "isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Bitbucket AND Activity AND VCS AND CI) OR dev_tag:(version AND control AND system AND CI)) AND status:(Не AND начата)"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "task_start_date",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000 
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "squad.buckets"
+          ],
+          "as": [
+            "squad"
+          ]
+        },
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "squads.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "n_squads_isu"
+          ],
+          "groupby": [
+            "key"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "datum.n_squads_isu",
+          "as": "n_squads_isu"
+        }
+      ]    
+    },
+    {
+      "name": "default_time_step",
+      "url": {
+        "index": "metrics-bitbucket-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      }
+}
+  ],
+  
+  "marks": [
+    {
+      "comment": "выводим данные по количеству здоровых команд (в BitBucket есть метрика по ним)",
+      "type": "rect",
+      "from": {
+        "data": "auto_bitbucket"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/6 + x_step/12"
+          },
+          "width": {
+            "signal": "x_step/6"
+          },
+          "y": {
+            "scale": "y",
+            "value": 0
+          },
+          "y2": {
+            "scale": "y",
+            "signal": "datum.n_squads_bitbucket"
+          },
+          "fill": {
+            "value": "#999"
+          }
+        }
+      }
+    },
+    {
+      "comment": "выводим подписи данных",
+      "type": "text",
+      "from": {
+        "data": "auto_bitbucket"
+      },
+      "encode": {
+        "enter": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/6 + x_step/6"
+          },
+          "y": {
+            "scale": "y",
+            "signal": "datum.n_squads_bitbucket",
+            "offset": -20
+          },
+          "fill": {
+            "value": "#999"
+          },
+          "baseline": {
+            "value": "top"
+          },
+          "align": {
+            "value": "center"
+          },
+          "text": {
+            "signal": "datum.n_squads_bitbucket"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {
+            "value": 12
+          }
+        }
+      }
+    },
+    {
+      "comment": "выводим данные по количеству команд с отклонениями метрики",
+      "type": "rect",
+      "from": {
+        "data": "auto_bitbucket"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/3 + x_step/12"
+          },
+          "width": {
+            "signal": "x_step/6"
+          },
+          "y": {
+            "scale": "y",
+            "value": 0
+          },
+          "y2": {
+            "scale": "y",
+            "signal": "datum.n_squads_deviation"
+          },
+          "fill": {
+            "value": "#F79646"
+          }
+        }
+      }
+    },
+    {
+      "comment": "выводим подписи данных",
+      "type": "text",
+      "from": {
+        "data": "auto_bitbucket"
+      },
+      "encode": {
+        "enter": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/3 + x_step/6"
+          },
+          "y": {
+            "scale": "y",
+            "signal": "datum.n_squads_deviation",
+            "offset": -20
+          },
+          "fill": {
+            "value": "#F79646"
+          },
+          "baseline": {
+            "value": "top"
+          },
+          "align": {
+            "value": "center"
+          },
+          "text": {
+            "signal": "datum.n_squads_deviation"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {
+            "value": 12
+          }
+        }
+      }
+    },
+    {
+      "comment": "выводим данные по количеству команд с открытыми задачами ИСУ",
+      "type": "rect",
+      "from": {
+        "data": "isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2 + x_step/12"
+          },
+          "width": {
+            "signal": "x_step/6"
+          },
+          "y": {
+            "scale": "y",
+            "value": 0
+          },
+          "y2": {
+            "scale": "y",
+            "signal": "datum.n_squads_isu"
+          },
+          "fill": {
+            "value": "#eee"
+          }
+        }
+      }
+    },
+    {
+      "comment": "выводим подписи данных",
+      "type": "text",
+      "from": {
+        "data": "isu_tasks"
+      },
+      "encode": {
+        "enter": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2 + x_step/6"
+          },
+          "y": {
+            "scale": "y",
+            "signal": "datum.n_squads_isu",
+            "offset": -20
+          },
+          "fill": {
+            "value": "#eee"
+          },
+          "baseline": {
+            "value": "top"
+          },
+          "align": {
+            "value": "center"
+          },
+          "text": {
+            "signal": "datum.n_squads_isu"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {
+            "value": 12
+          }
+        }
+      }
+    }
+  ],
+  
+  "scales": [
+    {
+      "name": "x0",
+      "type": "band",
+      "domain": {
+        "data": "squad_code",
+        "field": "key",
+        "sort": true
+      }
+    },
+    {
+      "name": "x2",
+      "type": "band",
+      "domain": {
+        "data": "restrictions",
+        "field": "key",
+        "sort": true
+      }
+    },
+    {
+      "name": "x",
+      "type": "band",
+      "domain": {
+        "fields": [
+          {
+            "data": "default_time_step",
+            "field": "key",
+            "sort": true
+          }
+        ]
+      },
+      "range": "width"
+    },
+    {
+      "name": "y",
+      "type": "linear",
+      "range": "height",
+      "nice": true,
+      "zero": true,
+      "domain": [
+        0,
+        {
+          "signal": "max"
+        }
+      ]
+    },
+    {
+      "name": "color",
+      "type": "ordinal",
+      "domain": [
+        "N здоровых команд",
+        "N команд с отклонениями",
+        "N задач выставлено"
+      ],
+      "range": [
+        "#999",
+        "#F79646",
+        "#fff"
+      ]
+    }
+  ],
+  
+  "axes": [
+    {
+      "scale": "x",
+      "orient": "bottom",
+      "encode": {
+        "labels": {
+          "update": {
+            "text": {
+              "signal": "timeFormat(datum.value, '%d.%m')"
+            },
+            
+            "fill": {
+              "value": "#999"
+            },
+            "align": {
+              "value": "center"
+            },
+            "baseline": {
+              "value": "top"
+            },
+            "font": {
+              "value": "Segoe UI, Helvetica, Open Sans, Arial"
+            },
+            "fontSize": {
+              "value": 13
+            }
+          }
+        }
+      }
+    },
+    {
+      "scale": "y",
+      "orient": "left",
+      "encode": {
+        "labels": {
+          "update": {
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Helvetica, Open Sans, Arial"
+            },
+            "fill": {
+              "value": "#999"
+            }
+          }
+        }
+      }
+    }
+  ],
+  
+  "signals": [
+    {
+      "name": "x_step",
+      "update": "width/domain('x').length"
+    },
+    {
+      "name": "n_of_restrictors",
+      "update": "data('restrictions').length"
+    },
+    {
+      "name": "n_of_squads",
+      "update": "data('squad_code').length"
+    },
+    {
+      "name": "max",
+      "update": "data('squad_code').length"
+    },
+    {
+      "name": "1",
+      "update1": "warn(data('auto_bitbucket'))"
+    }
+  ],
+  
+  "config": {
+    "style": {
+      "cell": {
+        "stroke": "transparent"
+      }
+    },
+    "axisX": {
+      "domainColor": {
+        "value": "#444"
+      },
+      "titleFont": {
+        "value": "Segoe UI, Helvetica, Open Sans, Arial"
+      },
+      "titleColor": {
+        "value": "#444"
+      },
+      "labelLimit": {
+        "value": 50
+      }
+    },
+    "axisY": {
+      "domainColor": {
+        "value": "#444"
+      },
+      "tickColor": {
+        "value": "#444"
+      },
+      "titleFont": {
+        "value": "Segoe UI, Helvetica, Open Sans, Arial"
+      },
+      "titleColor": {
+        "value": "#ddd"
+      },
+      "labelLimit": {
+        "value": 100
+      }
+    },
+    "title": {
+      "fontSize": 20,
+      "offset": "20",
+      "fontWeight": "normal",
+      "font": {
+        "value": "Segoe UI Light, SF Pro Light, Open Sans, Arial"
+      },
+      "color": {
+        "value": "#eee"
+      }
+    }
+  },
+  
+  "legends": [
+    {
+      "fill": "color",
+      "encode": {
+        "labels": {
+          "update": {
+"limit":{
+"value": 2000
+},
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Helvetica, Open Sans, Arial"
+            },
+            "fill": {
+              "value": "#999"
+            }
+          },
+          "hover": {
+            "fill": {
+              "value": "firebrick"
+            }
+          }
+        },
+        "symbols": {
+          "update": {
+            "stroke": {
+              "value": "transparent"
+            }
+          }
+        },
+        "legend": {
+          "update": {
+            "stroke": {
+              "value": "#ccc"
+            },
+            "strokeWidth": {
+              "value": 0
+            }
+          }
+        }
+      },
+      "orient": "bottom"
+    }
+  ]
+}
