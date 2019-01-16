@@ -1,0 +1,65 @@
+<style>
+
+   table, td {
+        border-bottom: 0.5px solid #111;
+        
+        
+    }
+     td {
+        padding: 5px;
+        padding-left: 10px;
+        font-size: 13px;
+        font-family: Segoe UI, Helvetica, Open Sans, Arial;
+        color: #999;
+    }
+    th {
+        background-color: #111;
+        padding: 5px;
+        padding-left: 10px;
+        font-size: 13px;
+        font-family: Segoe UI, Helvetica, Open Sans, Arial;
+        color: #999;
+    }
+   
+    p,li {
+        font-size: 14px;
+        font-style: italic;
+        font-family: Segoe UI, Helvetica, Open Sans, Arial ;
+        text-align: right;
+    }
+    div h2 {
+                font-size: 20px;
+    font-style: normal;
+    font-family: Segoe UI Light, Helvetica, Open Sans, Arial;
+    text-align: center;
+    color: #eee;
+    height: 30px;
+    line-height: 20px;
+}
+</style>
+
+<div><h2>Незакрытые задачи в ИСУ на сегодня</h2></div>
+<span style="font-family: Segoe UI, Helvetica">Итого задач в работе: {{meta.total_rows}}<br>&nbsp</span>
+
+<table cellspacing="10" width=100% border=0 style="font-family: Open Sans">
+    <tr >
+        <th align="left" valign="top"> Id задачи </th>
+        <th align="left" valign="top"> Метрика </th>
+        <th align="center" valign="top"> Статус </th>
+        <th align="center" valign="top"> Назначено </th>
+        <th align="left" valign="top"> Исполнитель </th>
+        <th align="center" valign="top"> Роль </th>
+        <th align="center" valign="top"> Эскалация </th>
+    </tr>  
+   {{#meta.task_display}}
+    <tr>
+        <td align="left" valign="top"> {{taskid}} </td>
+        <td align="left" valign="top"> {{metrics}} </td>
+        <td align="center" valign="top"> {{status}} </td>
+        <td align="center" valign="top"> {{startdate}} </td>
+        <td align="left" valign="top"> {{assignee}} </td>
+        <td align="center" valign="top"> {{role}} </td>
+        <td align="center" valign="top"> {{escalation}} </td>
+    </tr>
+    {{/meta.task_display}}
+</table>
