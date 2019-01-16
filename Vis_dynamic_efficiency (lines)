@@ -1,0 +1,853 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v3.0.json",
+  "title": "Auto Testing",
+  "data": [
+    {
+      "comment": "Выводим перечень кодов команд и их единственных названий выбранного трайба",
+      "name": "squad_code",
+      "url": {
+        "index": "metrics-mappings-sbergilestruct",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp":
+                      {"time_zone": "Europe/Moscow",  "gte": "now-7d",                  "lte": "now"}
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "squads": {
+                  "terms": {
+                    "field": "squad.keyword",
+                    "size": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads_code.buckets"
+      }
+    },
+    {
+      "comment": "Выводим перечень кодов команд КБ",
+      "name": "block_squad_code",
+      "url": {
+        "index": "metrics-mappings-sbergilestruct",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp":
+                      {"time_zone": "Europe/Moscow",  "gte": "now-7d",                  "lte": "now"}
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND tribe:((Corporate AND Customets AND 360) OR (Corporate AND Lending) OR (Daily AND Banking) OR (Цифровой AND Корпоративный AND Банк))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "squads": {
+                  "terms": {
+                    "field": "squad.keyword",
+                    "size": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads_code.buckets"
+      }
+    },
+    {
+      "comment": "Выводим команды выбранного трайба с исключениями по метрике в ИСУ",
+      "name": "tribe_restrictions",
+      "url": {
+        "index": "metrics-mappings-isu-restrictions-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "query_string": {
+                    "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0"
+                  }
+                },
+                {
+                  "range": {
+                    "date_end": {
+                      "time_zone": "Europe/Moscow",
+                      "gt": "now+1d"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 100000
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads_code.buckets"
+      },
+      "transform": [
+        {
+// исключаем команды, которые на текущий момент не в составе выбранного трайба        
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.key) >= 0"
+        }
+      ]
+    },
+    {
+      "comment": "Выводим команды с исключениями по метрике в ИСУ",
+      "name": "block_restrictions",
+      "url": {
+        "index": "metrics-mappings-isu-restrictions-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "query_string": {
+                    "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0 AND tribe:((Corporate AND Customets AND 360) OR (Corporate AND Lending) OR (Daily AND Banking) OR (Цифровой AND Корпоративный AND Банк))"
+                  }
+                },
+                {
+                  "range": {
+                    "date_end": {
+                      "time_zone": "Europe/Moscow",
+                      "gt": "now+1d"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 100000
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads_code.buckets"
+      },
+      "transform": [
+// исключаем команды, которые на текущий момент не в составе трайбов КБ
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.key) >= 0"
+        }//, проверка количества исключенных команд
+      //  {
+      //   "type": "aggregate",
+      //  "fields": [
+      //     "datum.key"
+      //    ],
+      //    "ops": [
+      //      "count"
+      //     ],
+      //     "as": [
+      //       "block_restrictions"
+      //     ]
+      //   }
+      ]
+    },
+    {
+    "comment": "метрика Auto Testing по командам выбранного трайба",
+      "name": "selected_tribe_at",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName: ((Smoke AND Test AND Dev*) OR (Auto AND Test AND Dev*) OR (Smoke AND Test AND DevBarrier*) OR (Auto AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND Dev*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "squad.buckets"
+          ],
+          "as": [
+            "squad"
+          ]
+        },
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// исключаем команды, которые числятся в исключениях ИСУ для выбранного трайба
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x3'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "squads.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "c"
+          ],
+          "groupby": [
+            "key"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "round((datum.c / (n_of_squads - n_tribe_restrictors)  *100))",
+          "as": "tribe_at_good_squads"
+        }         
+      ]
+    },
+    {
+    "comment": "метрика по командам блока КБ",
+      "name": "all_block_at",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Smoke AND Test AND Dev*) OR (Auto AND Test AND Dev*) OR (Smoke AND Test AND DevBarrier*) OR (Auto AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND Dev*)) AND tribe:((Corporate AND Customets AND 360) OR (Corporate AND Lending) OR (Daily AND Banking) OR (Цифровой AND Корпоративный AND Банк))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "squad.buckets"
+          ],
+          "as": [
+            "squad"
+          ]
+        },
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.squad.key) >= 0"
+        },
+// исключаем команды, которые числятся в исключениях ИСУ для КБ
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x4'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "squads.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "c"
+          ],
+          "groupby": [
+            "key"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "round((datum.c / (n_block_squads - n_block_restrictors) * 100))",
+          "as": "block_at_good_squads"
+        }     
+      ]
+    },
+    {
+      "name": "isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND AutoTest AND команда AND CI) OR dev_tag:(Отсутствие AND AutoTest AND команда AND CI)) AND status:((Не AND начата) OR (В AND работе))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "cardinality": {
+                        "field": "squad_code.keyword"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      }
+    },
+    {
+      "name": "default_time_step",
+      "url": {
+        "index": "metrics-jenkins-*, metrica-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      }
+}
+    ],
+  
+  "marks": [
+        {
+          "type": "line",
+          "from": {"data": "all_block_at"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "key"},
+              "y": {"scale": "y", "field": "block_at_good_squads"},
+              "stroke": {"value": "#999"},
+              "strokeWidth": {"value": 4}
+            },
+            "hover": {
+              "fillOpacity": {"value": 0.5}
+            }
+          }
+        },
+        {
+  "type": "symbol",
+      "from": {"data": "all_block_at"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "y": {"scale": "y", "field": "block_at_good_squads"},
+          "size": {"value": 160},
+          "shape": {"value": "circle"},
+          "fill": {
+              "value": "#999"
+            },
+          zindex: 1
+        }
+      }
+    },
+            {
+          "type": "text",
+          "from": {"data": "all_block_at"},
+          "encode": {
+            "enter": {
+          "x": {"scale": "x", "field": "key"},
+          "y": {"scale": "y", "field": "block_at_good_squads", "offset": -20},
+              "fill": {"value": "#999"},
+              "align": {"value": "top"},
+              "baseline": {"value": "middle"},
+              "text": {"signal": "datum.block_at_good_squads + '%'"}
+            }
+          }
+        },
+        {
+          "type": "line",
+          "from": {"data": "selected_tribe_at"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "key"},
+              "y": {"scale": "y", "field": "tribe_at_good_squads"},
+              "stroke": {"value": "#1B998B"},
+              "strokeWidth": {"value": 4}
+            },
+            "hover": {
+              "fillOpacity": {"value": 0.5}
+            }
+          }
+        },
+        {
+  "type": "symbol",
+      "from": {"data": "selected_tribe_at"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "y": {"scale": "y", "field": "tribe_at_good_squads"},
+          "size": {"value": 160},
+          "shape": {"value": "circle"},
+          "fill": {
+              "value": "#1B998B"
+            },
+          zindex: 1
+        }
+      }
+    },
+            {
+          "type": "text",
+          "from": {"data": "selected_tribe_at"},
+          "encode": {
+            "enter": {
+          "x": {"scale": "x", "field": "key"},
+          "y": {"scale": "y", "field": "tribe_at_good_squads", "offset": -20},
+              "fill": {"value": "#1B998B"},
+              "align": {"value": "top"},
+              "baseline": {"value": "middle"},
+              "text": {"signal": "datum.tribe_at_good_squads + '%'"}
+            }
+          }
+        },
+        {
+      "comment": "выводим данные по количеству команд с открытыми задачами ИСУ",
+      "type": "symbol",
+      "from": {
+        "data": "isu_tasks"
+      },
+      "encode": {
+        "update": {
+        "size": {"value":"400"},
+          "x": {"scale": "x", "field": "key"},
+          
+          "y": {
+            "signal": "-x_step/10"
+          },
+          "y2": {
+            "signal": "datum.count.value > 0 ? ((datum.count.value * 100 / height/4)*(-1)) : 0"
+          },
+          "fill": {
+            "value": "#eee"
+          }
+        }
+      }
+    },
+        {
+      "comment": "выводим подписи данных",
+      "type": "text",
+      "from": {
+        "data": "isu_tasks"
+      },
+      "encode": {
+        "enter": {
+          "x": {"scale": "x", "field": "key"},
+          "y": {
+            "signal": "datum.count.value > 0 ? ((datum.count.value * 100 / height/4)*(-1)) : 0",
+            offset: {"signal":"-x_step/7"}
+          },
+          "fill": {
+            "value": "#272727"
+          },
+          "baseline": {
+            "value": "top"
+          },
+          "align": {
+            "value": "center"
+          },
+          "text": {
+            "signal": "datum.count.value"
+          },
+          "font": {
+            "value": "Segoe UI, Open Sans, Arial"
+          },
+          "fontSize": {
+            "value": 13
+          }
+        }
+      }
+    }
+  ],
+  
+  "signals": [
+    {
+      "name": "1",
+      "update1": "warn(data('squad_code'))"
+    },
+    {
+      "name": "n_tribe_restrictors",
+      "update": "data('tribe_restrictions').length"
+    },
+    {
+      "name": "n_block_restrictors",
+      "update": "data('block_restrictions').length"
+    },
+    {
+      "name": "n_of_squads",
+      "update": "data('squad_code').length"
+    },
+    {
+      "name": "n_block_squads",
+      "update": "data('block_squad_code').length"
+    },
+    {
+      "name": "x_step",
+      "update": "width/domain('x').length"
+    },
+    {
+    "name": "isu_max",
+    "update": "data('isu_tasks').length > 0 ? (max(data('isu_tasks')[0].count.value)) : 0"
+    }
+  ],
+  
+  "scales": [
+    {
+      "name": "x0",
+      "type": "band",
+      "domain": {
+        "data": "squad_code",
+        "field": "key",
+        "sort": true
+      }
+    },
+    {
+      "name": "x2",
+      "type": "band",
+      "domain": {
+        "data": "block_squad_code",
+        "field": "key",
+        "sort": true
+      }
+    },
+    {
+      "name": "x",
+      "type": "point",
+      "range": "width",
+      "domain": {"data": "default_time_step", "field": "key"}
+    },
+// шкала для команд-исключений выбранного трайба
+    {
+      "name": "x3",
+      "type": "band",
+      "domain": {
+        "data": "tribe_restrictions",
+        "field": "key",
+        "sort": true
+      }
+    },
+// шкала для команд-исключений блока КБ
+    {
+      "name": "x4",
+      "type": "band",
+      "domain": {
+        "data": "block_restrictions",
+        "field": "key",
+        "sort": true
+      }
+    },
+    {
+      "name": "y",
+      "type": "linear",
+      "range": "height",
+      "nice": true,
+      "zero": true,
+      "domain": [0, 100]
+    },
+    {
+      "name": "y2",
+      "type": "linear",
+      "range": "height",
+      "nice": true,
+      "zero": true,
+      "domain": [0, {
+          "signal": "height/4*(-1)"
+        }]
+    },
+        {
+      "name": "color",
+      "type": "ordinal",
+      "domain": [
+        "% здоровых команд КБ",
+        "% здоровых команд трайба",
+        "N команд с незакрытыми задачами в ИСУ"
+      ],
+      "range": [
+        "#999",
+        "#1B998B",
+        "#eee"
+      ]
+    }
+  ],
+  
+  "axes": [
+    {
+    "scale": "x", 
+    "orient": "bottom", 
+    "encode": {
+        "labels": {
+          "update": {
+            "text": {
+              "signal": "timeFormat(datum.value, '%d.%m')"
+            },
+            
+            "fill": {
+              "value": "#999"
+            },
+            "align": {
+              "value": "center"
+            },
+            "baseline": {
+              "value": "top"
+            },
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Helvetica, Open Sans, Arial"
+            }
+          }
+        }
+     }
+    },
+    {
+    "scale": "y",
+    "orient": "left", 
+    "grid": true,
+    "encode": {
+        "labels": {
+          "update": {
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Open Sans, Arial"
+            },
+            "fill": {
+              "value": "#999"
+            }
+          }
+        },
+        "grid": {
+        "update": {
+        "stroke": {"value": "#333"},
+        "strokeWidth": {"value": 0.3}
+
+}
+        }
+      }
+      }
+  ],
+
+  "legends": [
+    {
+      "fill": "color",
+      "encode": {
+        "labels": {
+          "update": {
+"limit":{
+"value": 2000
+},          
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Open Sans, Arial"
+            },
+            "fill": {
+              "value": "#999"
+            }
+          }
+        },
+        
+        "symbols": {
+          "update": {
+            "stroke": {
+              "value": "transparent"
+            }
+          }
+        }
+      },
+      "orient": "bottom",
+      
+    }
+  ],
+
+  "config": {
+    "style": {
+      "cell": {
+        "stroke": "transparent"
+      }
+    },
+    
+    "title": {
+      "fontSize": 20,
+      "offset": "15",
+      "fontWeight": "normal",
+      "font": {
+        "value": "Segoe UI Light, Helvetica, Open Sans, Arial"
+      },
+      "color": {"value": "#eee"}
+    },
+    "axis": {
+      "titleColor": "#ddd",
+      "titleFontWeight": "normal",
+      "domainColor": "#444",
+      "tickColor": "#444",
+      
+      "titleFont": {
+        "value": "Segoe UI Light, Helvetica, Open Sans, Arial"
+      }
+    }
+  }
+}
