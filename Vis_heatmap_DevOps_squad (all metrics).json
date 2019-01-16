@@ -1,0 +1,5451 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v3.0.json",
+  
+  "title": "DevOps метрики",
+  
+  "data": [
+// данные для оси Y
+    {
+      "name": "source",
+      "values": [
+        {
+          "a": "Bitbucket Activity",
+          "b": 1
+        },
+        {
+          "a": "Auto Build",
+          "b": 2
+        },
+        {
+          "a": "Auto Deploy",
+          "b": 3
+        },
+        {
+          "a": "Auto Testing",
+          "b": 4
+        },
+        {
+          "a": "Unit Testing",
+          "b": 5
+        },
+        {"a": "Auto Deploy ST", "b": 6},
+        {"a": "Auto Test ST", "b": 7},
+        {"a": "Auto Deploy IFT", "b": 8},
+        {"a": "Auto Test IFT", "b": 9},
+        {"a": "Auto Deploy UAT", "b": 10},
+        {"a": "Auto Test UAT", "b": 11},
+        {"a": "Auto Deploy PROD", "b": 12}
+      ]
+    },
+// команды SAP-МУСС
+    {
+      "comment": "Выводим перечень кодов команд и их единственных названий",
+      "name": "squad_code",
+      "url": {
+        "index": "metrics-mappings-sbergilestruct",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp":
+                      {"time_zone": "Europe/Moscow",  "gte": "now-7d",                  "lte": "now"}
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "squads": {
+                  "terms": {
+                    "field": "squad.keyword",
+                    "size": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads_code.buckets"
+      }
+    },
+
+// все исключения для выбранного трайба
+    {
+  "comment": "загружаем все неприменимые практики для трайба",
+  "name": "tribe_restrictions_all",
+  "url": {
+    "index": "metrics-mappings-isu-restrictions-*",
+    "body": {
+      "size": 0,
+      "query": {
+        "bool": {
+          "must": [
+            "%dashboard_context-must_clause%",
+            {
+              "range": {
+                "date_end": {
+                  "time_zone": "Europe/Moscow",
+                  "gt": "now+1d"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "aggs": {
+        "metrics": {
+          "filters": {
+            "filters": {
+              "bitbucket_activity": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0"
+                }
+              },
+              "auto_build": {
+                "query_string": {
+                  "query": "deviation_name:(Auto AND build) AND deviation_active:0"
+                }
+              },
+              "auto_deploy": {
+                "query_string": {
+                  "query": "deviation_name:(Auto AND Deploy) AND deviation_active:0"
+                }
+              },
+              "auto_testing": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0"
+                }
+              },
+              "unit_testing": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствуют AND UT AND команда AND CI) AND deviation_active:0"
+                }
+              },
+              "ad_st": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "at_st": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "ad_ift": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "at_ift": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "ad_uat": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP) AND deviation_active:0"
+                }
+              },
+              "at_uat": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND ПСИ AND команда AND CDP) AND deviation_active:0"
+                }
+              },
+              "ad_prod": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP) AND deviation_active:0"
+                }
+              }
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 100000
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "format": {
+    "type": "json",
+    "property": "aggregations.metrics.buckets"
+  }
+},
+// делаем трансформацию по исключениям bitbucket_activity
+    {
+      "name": "tribe_bb_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "bitbucket_activity.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_bb_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Bitbucket Activity'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям auto build
+    {
+      "name": "tribe_ab_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_build.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ab_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Build'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям auto deploy
+    {
+      "name": "tribe_ad_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_deploy.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям auto testing
+    {
+      "name": "tribe_at_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_testing.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Testing'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям unit testing
+    {
+      "name": "tribe_ut_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "unit_testing.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ut_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Unit Testing'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям ad_st
+    {
+      "name": "tribe_ad_st_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_st.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_st_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy ST'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям at_st
+    {
+      "name": "tribe_at_st_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_st.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_st_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test ST'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям ad_ift
+    {
+      "name": "tribe_ad_ift_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_ift.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_ift_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy IFT'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям at_ift
+    {
+      "name": "tribe_at_ift_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_ift.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_ift_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test IFT'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям ad_uat
+    {
+      "name": "tribe_ad_uat_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_uat.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_uat_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy UAT'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям at_uat
+    {
+      "name": "tribe_at_uat_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_uat.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_uat_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test UAT'",
+          "as": "type"
+        }
+      ]
+    },
+// делаем трансформацию по исключениям ad_prod
+    {
+      "name": "tribe_ad_prod_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_prod.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_prod_squads_rest"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy PROD'",
+          "as": "type"
+        }
+      ]
+    },
+
+// данные по метрикам
+// BitBucket Activity
+    {
+      "name": "bitbucket_activity",
+      "url": {
+        "index": "metrics-bitbucket-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "payload.PULL_REQUEST_UNIQ_ID.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "bitbucket_activity_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Bitbucket Activity'",
+          "as": "type"
+        }
+      ]
+    },
+// Auto Build
+    {
+      "name": "auto_build",
+      "url": {
+        "index": "metrics-jenkins-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "tags:(build)"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "buildUrl.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "auto_build_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Build'",
+          "as": "type"
+        }
+      ]
+    },
+// Auto Deploy
+    {
+      "name": "auto_deploy",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName: (Deployment AND Dev*) OR (Deploy AND Dev*) OR (Deploy AND DevBarrier*) OR (Deployment AND DevBarrier*) OR (Деплой AND DevBarrier*) OR (Деплой AND Dev*)"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "buildUrl.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "auto_deploy_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy'",
+          "as": "type"
+        }
+      ]
+    },
+// Auto Testing
+    {
+      "name": "auto_testing",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName: ((Smoke AND Test AND Dev*) OR (Auto AND Test AND Dev*) OR (Smoke AND Test AND DevBarrier*) OR (Auto AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND Dev*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "buildUrl.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "at_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Testing'",
+          "as": "type"
+        }
+      ]
+    },
+// Unit Testing
+    {
+      "name": "unit_testing",
+      "url": {
+        "index": "metrics-sonarqube-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                    "unit_test": {
+                      "avg": {
+                        "field": "Coverage.coverage"
+                      }
+                    }
+                  }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.unit_test.value > 0 ? 1 : 0",
+          "as": "ut_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Unit Testing'",
+          "as": "type"
+        }
+      ]
+    },
+// Auto Deploy ST
+    {
+      "name": "auto_deploy_st",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:( (Deployment AND ST*) OR (Deploy AND ST*) OR (Deployment AND DevBarrier*) OR (Deploy AND DevBarrier*) OR (Деплой AND СТ*) OR (Деплой AND DevBarrier*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "buildUrl.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "ad_st_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy ST'",
+          "as": "type"
+        }
+      ]
+    },
+// Auto Test ST
+    {
+      "name": "auto_test_st",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Smoke AND Test AND ST*) OR (Auto AND Test AND ST*) OR (Smoke AND Test AND DevBarrier) OR (Auto AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND ST*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "buildUrl.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "at_st_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test ST'",
+          "as": "type"
+        }
+      ]
+    },
+// Auto Deploy IFT
+    {
+      "name": "auto_deploy_ift",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Deployment AND IFT*) OR (Deploy AND IFT*) OR (Деплой AND ИФТ) OR (Deployment AND RT*) OR (Deploy AND RT*) OR (Деплой AND РТ*) OR (Deploy AND MajorCheck*) OR (Деплой AND MajorCheck*) OR (Deploy AND MinorCheck*) OR (Деплой AND MinorCheck*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "buildUrl.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "ad_ift_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy IFT'",
+          "as": "type"
+        }
+      ]
+    },
+// Auto Test IFT
+    {
+      "name": "auto_test_ift",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Smoke AND Test AND IFT*) OR (Auto AND Test AND IFT*) OR (Smoke AND Test AND RT*) OR (Auto AND Test AND RT*) OR (Post AND Dep AND Test AND MajorCheck*) OR (Post AND Dep AND Test AND MinorCheck*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "buildUrl.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "at_ift_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test IFT'",
+          "as": "type"
+        }
+      ]
+    },
+// Auto Deploy UAT
+    {
+      "name": "auto_deploy_uat",
+      "url": {
+        "index": "metrics-jenkinscdp-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Deployment AND UAT*) OR (Deployment AND MajorGo*) OR (Deployment AND MajorCheck*) OR (Deploy AND UAT*) OR (Deploy AND MajorGo*) OR (Deploy AND MinorGo*) OR (Деплой AND UAT*) OR (Деплой AND MajorGo*) OR (Деплой AND MinorGo*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "buildUrl.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "ad_uat_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy UAT'",
+          "as": "type"
+        }
+      ]
+    },
+// Auto Test UAT
+    {
+      "name": "auto_test_uat",
+      "url": {
+        "index": "metrics-jenkinscdp-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Smoke AND Test AND UAT*) OR (Auto AND Test AND UAT*) OR (Smoke AND Test AND MajorGo) OR (Auto AND Test AND MajorGo) OR (Smoke AND Test AND MinorGo*) OR (Auto AND Test AND MinorGo*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "buildUrl.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "at_uat_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test UAT'",
+          "as": "type"
+        }
+      ]
+    },
+// Auto Deploy PROD
+    {
+      "name": "auto_deploy_prod",
+      "url": {
+        "index": "metrics-jenkinscdp-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName: ((Deployment AND PROD*) OR (Deploy AND PROD*) OR (Деплой AND PROD*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "count": {
+                  "cardinality": {
+                    "field": "buildUrl.keyword"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "datum.count.value > 0 ? 1 : 0",
+          "as": "ad_prod_data"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy PROD'",
+          "as": "type"
+        }
+      ]
+    }, 
+
+// данные по ИСУ    
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "bitbucket_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Bitbucket AND Activity AND VCS AND CI) OR dev_tag:(version AND control AND system AND CI)) AND status:((Не AND начата) OR (В AND работе))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [
+                      {
+                        "@timestamp": "desc"
+                      }
+                    ],
+                    "_source": {
+                      "includes": [
+                        "id_task",
+                        "pokaz_name",
+                        "status",
+                        "task_start_date",
+                        "employee_name",
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "bitbucket_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Bitbucket AND Activity AND VCS AND CI) OR dev_tag:(version AND control AND system AND CI)) AND status:((Не AND начата) OR (В AND работе))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "bitbucket_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "bitbucket_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "bitbucket_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "bitbucket_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "bitbucket_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+         {
+          "type": "formula",
+          "expr": "'Bitbucket Activity'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "auto_build_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Auto AND build) OR dev_tag:(Auto AND build)) AND status:((Не AND начата) OR (В AND работе))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [
+                      {
+                        "@timestamp": "desc"
+                      }
+                    ],
+                    "_source": {
+                      "includes": [
+                        "id_task",
+                        "pokaz_name",
+                        "status",
+                        "task_start_date",
+                        "employee_name",
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                      ]
+                    
+                  }
+                }
+              }
+                }
+              }
+            }
+          }
+        },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "auto_build_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Auto AND build) OR dev_tag:(Auto AND build)) AND status:((Не AND начата) OR (В AND работе))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+		    {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "auto_build_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "auto_build_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "auto_build_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "auto_build_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "auto_build_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Build'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "auto_deploy_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Auto AND Deploy) OR dev_tag:(Auto AND Deploy)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [
+                      {
+                        "@timestamp": "desc"
+                      }
+                    ],
+                    "_source": {
+                      "includes": [
+                        "id_task",
+                        "pokaz_name",
+                        "status",
+                        "task_start_date",
+                        "employee_name",
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                      ]
+                    
+                  }
+                }
+              }
+                }
+              }
+            }
+          }
+        },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "auto_deploy_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Auto AND Deploy) OR dev_tag:(Auto AND Deploy)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+		    {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "auto_deploy_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "auto_deploy_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "auto_deploy_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "auto_deploy_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "auto_deploy_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "at_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND AutoTest AND команда AND CI) OR dev_tag:(Отсутствие AND AutoTest AND команда AND CI)) AND status:((Не AND начата) OR (В AND работе))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [
+                      {
+                        "@timestamp": "desc"
+                      }
+                    ],
+                    "_source": {
+                      "includes": [
+                        "id_task",
+                        "pokaz_name",
+                        "status",
+                        "task_start_date",
+                        "employee_name",
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                      ]
+                    
+                  }
+                }
+              }
+                }
+              }
+            }
+          }
+        },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "at_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND AutoTest AND команда AND CI) OR dev_tag:(Отсутствие AND AutoTest AND команда AND CI)) AND status:((Не AND начата) OR (В AND работе))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+		    {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "at_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Testing'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "ut_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствуют AND UT AND команда AND CI) OR dev_tag:(Отсутствуют AND UT AND команда AND CI)) AND status:((Не AND начата) OR (В AND работе))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [
+                      {
+                        "@timestamp": "desc"
+                      }
+                    ],
+                    "_source": {
+                      "includes": [
+                        "id_task",
+                        "pokaz_name",
+                        "status",
+                        "task_start_date",
+                        "employee_name",
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                      ]
+                    
+                  }
+                }
+              }
+                }
+              }
+            }
+          }
+        },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "ut_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствуют AND UT AND команда AND CI) OR dev_tag:(Отсутствуют AND UT AND команда AND CI)) AND status:((Не AND начата) OR (В AND работе))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+		    {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "ut_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ut_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ut_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ut_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ut_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Unit Testing'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "ad_st_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL) OR dev_tag:(Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [{"@timestamp": "desc"}],
+                    "_source": {"includes": [
+                        "id_task", 
+                        "pokaz_name", 
+                        "status",
+                        "task_start_date",
+                        "employee_name", 
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                        ]}
+                  }
+                }
+              }
+                }
+              }
+            }
+          },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "ad_st_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL) OR dev_tag:(Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "ad_st_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_st_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_st_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_st_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_st_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy ST'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "at_st_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL) OR dev_tag:(Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [{"@timestamp": "desc"}],
+                    "_source": {"includes": [
+                        "id_task", 
+                        "pokaz_name", 
+                        "status",
+                        "task_start_date",
+                        "employee_name", 
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                        ]}
+                  }
+                }
+              }
+                }
+              }
+            }
+          },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "at_st_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL) OR dev_tag:(Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "at_st_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_st_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_st_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_st_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_st_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test ST'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "ad_ift_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL) OR dev_tag:(Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [{"@timestamp": "desc"}],
+                    "_source": {"includes": [
+                        "id_task", 
+                        "pokaz_name", 
+                        "status",
+                        "task_start_date",
+                        "employee_name", 
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                        ]}
+                  }
+                }
+              }
+                }
+              }
+            }
+          },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "ad_ift_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL) OR dev_tag:(Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "ad_ift_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_ift_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_ift_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_ift_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_ift_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy IFT'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "at_ift_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL) OR dev_tag:(Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [{"@timestamp": "desc"}],
+                    "_source": {"includes": [
+                        "id_task", 
+                        "pokaz_name", 
+                        "status",
+                        "task_start_date",
+                        "employee_name", 
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                        ]}
+                  }
+                }
+              }
+                }
+              }
+            }
+          },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "at_ift_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL) OR dev_tag:(Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "at_ift_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_ift_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_ift_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_ift_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_ift_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test IFT'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "ad_uat_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP) OR dev_tag:(Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [{"@timestamp": "desc"}],
+                    "_source": {"includes": [
+                        "id_task", 
+                        "pokaz_name", 
+                        "status",
+                        "task_start_date",
+                        "employee_name", 
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                        ]}
+                  }
+                }
+              }
+                }
+              }
+            }
+          },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "ad_uat_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP) OR dev_tag:(Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "ad_uat_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_uat_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_uat_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_uat_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_uat_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy UAT'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "at_uat_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autotest AND ПСИ AND команда AND CDP) OR dev_tag:(Отсутствие AND Autotest AND ПСИ AND команда AND CDP)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [{"@timestamp": "desc"}],
+                    "_source": {"includes": [
+                        "id_task", 
+                        "pokaz_name", 
+                        "status",
+                        "task_start_date",
+                        "employee_name", 
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                        ]}
+                  }
+                }
+              }
+                }
+              }
+            }
+          },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "at_uat_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autotest AND ПСИ AND команда AND CDP) OR dev_tag:(Отсутствие AND Autotest AND ПСИ AND команда AND CDP)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "at_uat_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_uat_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_uat_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_uat_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "at_uat_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test UAT'",
+          "as": "type"
+        }
+      ]
+    },
+    {
+      "comment": "детали по выставленной задаче ИСУ",
+      "name": "ad_prod_isu_tasks_detail",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP) OR dev_tag:(Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "tasks": {
+              "terms": {
+                "field": "id_task",
+                "size": 10000
+              },
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [{"@timestamp": "desc"}],
+                    "_source": {"includes": [
+                        "id_task", 
+                        "pokaz_name", 
+                        "status",
+                        "task_start_date",
+                        "employee_name", 
+                        "strim",
+                        "role_subj",
+                        "escalation"
+                        ]}
+                  }
+                }
+              }
+                }
+              }
+            }
+          },
+      "format": {
+        "type": "json",
+        "property": "aggregations.tasks.buckets"
+      }
+    },
+    {
+      "name": "ad_prod_isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND (pokaz_name:(Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP) OR dev_tag:(Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP)) AND status:((В AND работе) OR (Не AND начата))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "terms": {
+                        "field": "id_task",
+                        "size": 10000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "hist.buckets"
+          ],
+          "as": [
+            "hist"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "squad_code",
+          "key": "key",
+          "fields": [
+            "key"
+          ],
+          "values": [
+            "squads.buckets[0].key"
+          ],
+          "as": [
+            "squad"
+          ],
+          "default": "Неизвестно"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? 1 : 0",
+          "as": "isu_task",
+          "default": "0"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.hist.count.buckets.length > 0 ? datum.hist.count.buckets[0].key : 0",
+          "as": "task"
+        },
+        {
+          "type": "lookup",
+          "from": "ad_prod_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.task_start_date"
+          ],
+          "as": [
+            "task_start_date"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_prod_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.id_task"
+          ],
+          "as": [
+            "id_task"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_prod_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.status"
+          ],
+          "as": [
+            "status"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_prod_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.employee_name"
+          ],
+          "as": [
+            "employee_name"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "lookup",
+          "from": "ad_prod_isu_tasks_detail",
+          "key": "key",
+          "fields": [
+            "task"
+          ],
+          "values": [
+            "isu_task_details.hits.hits[0]._source.role_subj"
+          ],
+          "as": [
+            "role"
+          ],
+          "default": [
+            "Неизвестно"
+          ]
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy PROD'",
+          "as": "type"
+        }
+      ]
+    }
+  ],
+  
+  "marks": [
+// отрисовываем блок по метрике BitBucket Activity
+    {
+      "type": "rect",
+      "from": {
+        "data": "bitbucket_activity"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.bitbucket_activity_data == 1 ? c_black : c_orange"
+          }
+        }
+      }
+    },
+// если для команды действует исключение по метрике BitBucket Activity - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_bb_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_bb_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Auto Build
+    {
+      "type": "rect",
+      "from": {
+        "data": "auto_build"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.auto_build_data == 1 ? c_black : c_orange"
+          }
+        }
+      }
+    },
+// если для команды действует исключение по метрике Auto Build - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_ab_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_ab_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Auto Deploy
+    {
+      "type": "rect",
+      "from": {
+        "data": "auto_deploy"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.auto_deploy_data == 1 ? c_black : c_orange"
+          }
+        }
+      }
+    },
+// если для команды действует исключение по метрике Auto Deploy - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_ad_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_ad_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Auto Testing
+    {
+      "type": "rect",
+      "from": {
+        "data": "auto_testing"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.at_data == 1 ? c_black : c_orange"
+        }
+      }
+    }
+    },
+// если для команды действует исключение по метрике Auto Testing - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_at_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_at_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Unit Testing
+    {
+      "type": "rect",
+      "from": {
+        "data": "unit_testing"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.ut_data == 1 ? c_black : c_orange"
+        }
+        }
+      }
+    },
+// если для команды действует исключение по метрике Unit Testing - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_ut_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_ut_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Auto Deploy ST
+    {
+      "type": "rect",
+      "from": {
+        "data": "auto_deploy_st"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.ad_st_data == 1 ? c_black : c_orange"
+        }
+        }
+      }
+    },
+// если для команды действует исключение по метрике Auto Deploy ST - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_ad_st_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_ad_st_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Auto Test ST
+    {
+      "type": "rect",
+      "from": {
+        "data": "auto_test_st"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.at_st_data == 1 ? c_black : c_orange"
+        }
+        }
+      }
+    },
+// если для команды действует исключение по метрике Auto Test ST - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_at_st_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_at_st_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Auto Deploy IFT
+    {
+      "type": "rect",
+      "from": {
+        "data": "auto_deploy_ift"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.ad_ift_data == 1 ? c_black : c_orange"
+        }
+        }
+      }
+    },
+// если для команды действует исключение по метрике Auto Deploy IFT - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_ad_ift_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_ad_ift_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Auto Test IFT
+    {
+      "type": "rect",
+      "from": {
+        "data": "auto_test_ift"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.at_ift_data == 1 ? c_black : c_orange"
+        }
+        }
+      }
+    },
+// если для команды действует исключение по метрике Auto Test IFT - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_at_ift_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_at_ift_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Auto Deploy UAT
+    {
+      "type": "rect",
+      "from": {
+        "data": "auto_deploy_uat"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.ad_uat_data == 1 ? c_black : c_orange"
+        }
+        }
+      }
+    },
+// если для команды действует исключение по метрике Auto Deploy UAT - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_ad_uat_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_ad_uat_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Auto Test UAT
+    {
+      "type": "rect",
+      "from": {
+        "data": "auto_test_uat"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.at_uat_data == 1 ? c_black : c_orange"
+        }
+        }
+      }
+    },
+// если для команды действует исключение по метрике Auto Test UAT - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_at_uat_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_at_uat_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+// отрисовываем блок по метрике Auto Deploy PROD
+    {
+      "type": "rect",
+      "from": {
+        "data": "auto_deploy_prod"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "scale": "x",
+            "field": "key"
+          },
+          "width": {
+            "scale": "x",
+            "band": true
+          },
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.ad_prod_data == 1 ? c_black : c_orange"
+        }
+        }
+      }
+    },
+// если для команды действует исключение по метрике Auto Deploy PROD - вся строка серым
+    {
+      "type": "rect",
+      "from": {
+        "data": "tribe_ad_prod_rest"
+      },
+      "encode": {
+        "update": {
+          "width": {"signal": "w"},
+          "y": {
+            "scale": "y",
+            "field": "type"
+          },
+          "height": {
+            "scale": "y",
+            "band": true
+          },
+          "fill": {
+            "signal": "datum.tribe_ad_prod_squads_rest.key > 0 ? rest_grey : c_orange"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "bitbucket_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "auto_build_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "auto_deploy_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "at_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "ut_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "ad_st_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "at_st_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "at_st_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "ad_ift_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "at_ift_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "ad_uat_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "at_uat_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    },
+    {
+      "type": "symbol",
+      "from": {
+        "data": "ad_prod_isu_tasks"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.hist.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "size": {
+            "value": 80
+          },
+          "shape": {
+            "value": "circle"
+          },
+          "fill": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "strokeWidth": {
+            "value": 1
+          },
+          "stroke": {
+            "signal": "datum.isu_task == 1 ? '#fff' : 0"
+          },
+          "zindex": 1
+        },
+        "enter": {
+          "tooltip": {
+            "signal": "'Команда:   ' + datum.squad + '\\n' + 'Номер задачи:   ' + datum.id_task + '\\n' + 'Статус:   ' + datum.status + '\\n' + 'Назначена:   ' + '\\n'+ datum.task_start_date + '\\n' + 'Кому:   ' + datum.employee_name + '\\n' + 'Роль:   ' + datum.role"
+          }
+        }
+      }
+    }
+  ],
+  
+  "signals": [
+    {
+      "name": "2",
+      "update1": "warn(data('tribe_ab_rest'))"
+    },
+    {
+      "name": "x_step",
+      "update": "width/domain('x').length"
+    },
+    {
+      "name": "y_step",
+      "update": "height/domain('y').length"
+    },
+    {
+      "name": "c_grey",
+      "value": "#999999"
+    },
+    {
+      "name": "rest_grey",
+      "value": "#ccc"
+    },
+    {
+      "name": "c_orange",
+      "value": "#F79646"
+    },
+    {
+      "name": "c_black",
+      "value": "#222222"
+    },
+    {
+      "name": "w",
+      "update": "width"
+    }
+  ],
+  
+  "scales": [
+    {
+      "name": "x",
+      "type": "band",
+      "domain": {
+        "fields": [
+          {
+            "data": "bitbucket_activity",
+            "field": "key",
+            "sort": true
+          },
+          {
+            "data": "auto_build",
+            "field": "key",
+            "sort": true
+          }
+        ]
+      },
+      "range": [
+        0,
+        {
+          "signal": "width"
+        }
+      ],
+      "paddingInner": 0,
+      "paddingOuter": 0
+    },
+    {
+      "name": "y",
+      "type": "band",
+      "domain": {
+        "data": "source",
+        "field": "a"
+      },
+      "range": [
+        0,
+        {
+          "signal": "height"
+        }
+      ]
+    },
+    {
+      "name": "color",
+      "type": "ordinal",
+      "domain": [
+        "периоды с отклонениями",
+        "незакрытые задачи в ИСУ",
+        "метрика исключена"
+      ],
+      "range": [
+        "#F79646",
+        "#fff",
+        "#ccc"
+      ]
+    }
+  ],
+  
+  "axes": [
+    {
+      "scale": "x",
+      "labelOverlap": true,
+      "orient": "bottom",
+      "zindex": 1,
+      "encode": {
+        "labels": {
+          "update": {
+            "text": {
+              "signal": "timeFormat(datum.value, '%d.%m')"
+            },
+            "fill": {
+              "value": "#999"
+            },
+            "align": {
+              "value": "center"
+            },
+            "baseline": {
+              "value": "top"
+            },
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Helvetica, Open Sans, Arial"
+            }
+          }
+        }
+      }
+    },
+    {
+      "scale": "y",
+      "orient": "left",
+      "zindex": 1,
+      "encode": {
+        "labels": {
+          "update": {
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Helvetica, Open Sans, Arial"
+            },
+            "fill": {
+              "value": "#999"
+            },
+            "limit": 200
+          }
+        }
+      }
+    }
+  ],
+  
+  "legends": [
+    {
+      "fill": "color",
+      "encode": {
+        "labels": {
+          "update": {
+"limit":{
+"value": 2000
+},           
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Helvetica, Open Sans, Arial"
+            },
+            "fill": {
+              "value": "#999"
+            }
+          },
+          "hover": {
+            "fill": {
+              "value": "firebrick"
+            }
+          }
+        },
+        "symbols": {
+          "update": {
+          "shape": {"value": "square"},
+          "size": {"value": 80},
+            "stroke": {
+              "value": "transparent"
+            }
+          }
+        },
+        "legend": {
+          "update": {
+            "stroke": {
+              "value": "#ccc"
+            },
+            "strokeWidth": {
+              "value": 0
+            }
+          }
+        }
+      },
+      "orient": "bottom"
+    }
+  ],
+  
+  "config": {
+"kibana": {"tooltips": false},
+    "style": {
+      "cell": {
+        "stroke": "transparent"
+      }
+    },
+    "range": {
+      "heatmap": {
+        "scheme": "greys"
+      },
+      "heatmap_numbers": {
+        "scheme": "greys"
+      }
+    },
+    "title": {
+      "fontSize": 20,
+      "offset": "20",
+      "fontWeight": "normal",
+      "font": {
+        "value": "Segoe UI Light, helvetica, Open Sans, Arial"
+      },
+      "color": {
+        "value": "#eee"
+      }
+    },
+        "group": {"fill": "#F79646"}
+  }
+}
