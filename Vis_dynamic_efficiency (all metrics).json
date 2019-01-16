@@ -1,0 +1,3760 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v3.0.json",
+  "title": "",
+  "data": [
+// команды выбранного трайба
+    {
+      "comment": "Выводим перечень кодов команд и их единственных названий выбранного трайба",
+      "name": "squad_code",
+      "url": {
+        "index": "metrics-mappings-sbergilestruct",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp":
+                      {"time_zone": "Europe/Moscow",  "gte": "now-7d",                  "lte": "now"}
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND tribe_code:0011"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 100000
+              },
+              "aggs": {
+                "squads": {
+                  "terms": {
+                    "field": "squad.keyword",
+                    "size": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads_code.buckets"
+      }
+    },
+// команды КБ за исключением ММБ (выбранный трайб по умолчанию)
+    {
+      "comment": "Выводим перечень кодов команд блока КБ",
+      "name": "block_squad_code",
+      "url": {
+        "index": "metrics-mappings-sbergilestruct",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp":
+                      {"time_zone": "Europe/Moscow",  "gte": "now-7d",                  "lte": "now"}
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND tribe:((Corporate AND Customets AND 360) OR (Corporate AND Lending) OR (Daily AND Banking) OR (Цифровой AND Корпоративный AND Банк))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "squads": {
+                  "terms": {
+                    "field": "squad.keyword",
+                    "size": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads_code.buckets"
+      }
+    },
+    
+// все исключения для выбранного трайба
+    {
+  "comment": "загружаем все неприменимые практики для трайба",
+  "name": "tribe_restrictions_all",
+  "url": {
+    "index": "metrics-mappings-isu-restrictions-*",
+    "body": {
+      "size": 0,
+      "query": {
+        "bool": {
+          "must": [
+            "%dashboard_context-must_clause%",
+            {
+              "range": {
+                "date_end": {
+                  "time_zone": "Europe/Moscow",
+                  "gt": "now+1d"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "aggs": {
+        "metrics": {
+          "filters": {
+            "filters": {
+              "bitbucket_activity": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0"
+                }
+              },
+              "auto_build": {
+                "query_string": {
+                  "query": "deviation_name:(Auto AND build) AND deviation_active:0"
+                }
+              },
+              "auto_deploy": {
+                "query_string": {
+                  "query": "deviation_name:(Auto AND Deploy) AND deviation_active:0"
+                }
+              },
+              "auto_testing": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0"
+                }
+              },
+              "unit_testing": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствуют AND UT AND команда AND CI) AND deviation_active:0"
+                }
+              },
+              "ad_st": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "at_st": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "ad_ift": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "at_ift": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "ad_uat": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP) AND deviation_active:0"
+                }
+              },
+              "at_uat": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND ПСИ AND команда AND CDP) AND deviation_active:0"
+                }
+              },
+              "ad_prod": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP) AND deviation_active:0"
+                }
+              }
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 100000
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "format": {
+    "type": "json",
+    "property": "aggregations.metrics.buckets"
+  }
+},
+// делаем трансформацию по исключениям bitbucket_activity
+    {
+      "name": "tribe_bb_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "bitbucket_activity.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_bb_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_bb_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по bitbucket_activity
+    {
+      "name": "tribe_bb_rest_count",
+      "source": "tribe_bb_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_bb_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям auto build
+    {
+      "name": "tribe_ab_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_build.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ab_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ab_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по auto build
+    {
+      "name": "tribe_ab_rest_count",
+      "source": "tribe_ab_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ab_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям auto deploy
+    {
+      "name": "tribe_ad_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_deploy.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ad_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по auto deploy
+    {
+      "name": "tribe_ad_rest_count",
+      "source": "tribe_ad_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ad_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям auto testing
+    {
+      "name": "tribe_at_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_testing.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_at_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по auto testing
+    {
+      "name": "tribe_at_rest_count",
+      "source": "tribe_at_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_at_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям unit testing
+    {
+      "name": "tribe_ut_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "unit_testing.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ut_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ut_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по unit testing
+    {
+      "name": "tribe_ut_rest_count",
+      "source": "tribe_ut_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ut_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям ad_st
+    {
+      "name": "tribe_ad_st_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_st.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_st_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ad_st_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_st
+    {
+      "name": "tribe_ad_st_rest_count",
+      "source": "tribe_ad_st_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ad_st_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям at_st
+    {
+      "name": "tribe_at_st_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_st.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_st_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_at_st_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по at_st
+    {
+      "name": "tribe_at_st_rest_count",
+      "source": "tribe_at_st_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_at_st_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям ad_ift
+    {
+      "name": "tribe_ad_ift_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_ift.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_ift_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ad_ift_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_ift
+    {
+      "name": "tribe_ad_ift_rest_count",
+      "source": "tribe_ad_ift_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ad_ift_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям at_ift
+    {
+      "name": "tribe_at_ift_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_ift.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_ift_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_at_ift_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по at_ift
+    {
+      "name": "tribe_at_ift_rest_count",
+      "source": "tribe_at_ift_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_at_ift_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям ad_uat
+    {
+      "name": "tribe_ad_uat_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_uat.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_uat_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ad_uat_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_uat
+    {
+      "name": "tribe_ad_uat_rest_count",
+      "source": "tribe_ad_uat_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ad_uat_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям at_uat
+    {
+      "name": "tribe_at_uat_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_uat.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_uat_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_at_uat_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по at_uat
+    {
+      "name": "tribe_at_uat_rest_count",
+      "source": "tribe_at_uat_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_at_uat_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям ad_prod
+    {
+      "name": "tribe_ad_prod_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_prod.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_prod_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ad_prod_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_prod
+    {
+      "name": "tribe_ad_prod_rest_count",
+      "source": "tribe_ad_prod_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ad_prod_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+    
+// все исключения КБ за исключением ММБ (выбранный трайб по умолчанию)
+    {
+  "comment": "загружаем все неприменимые практики для трайба",
+  "name": "block_restrictions_all",
+  "url": {
+    "index": "metrics-mappings-isu-restrictions-*",
+    "body": {
+      "size": 0,
+      "query": {
+        "bool": {
+          "must": [
+          {
+            "query_string": {
+              "query": "tribe:((Corporate AND Customets AND 360) OR (Corporate AND Lending) OR (Daily AND Banking) OR (Цифровой AND Корпоративный AND Банк))"
+                  }
+          },
+            {
+              "range": {
+                "date_end": {
+                  "time_zone": "Europe/Moscow",
+                  "gt": "now+1d"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "aggs": {
+        "metrics": {
+          "filters": {
+            "filters": {
+              "bitbucket_activity": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0"
+                }
+              },
+              "auto_build": {
+                "query_string": {
+                  "query": "deviation_name:(Auto AND build) AND deviation_active:0"
+                }
+              },
+              "auto_deploy": {
+                "query_string": {
+                  "query": "deviation_name:(Auto AND Deploy) AND deviation_active:0"
+                }
+              },
+              "auto_testing": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0"
+                }
+              },
+              "unit_testing": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствуют AND UT AND команда AND CI) AND deviation_active:0"
+                }
+              },
+              "ad_st": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "at_st": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "ad_ift": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "at_ift": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "ad_uat": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP) AND deviation_active:0"
+                }
+              },
+              "at_uat": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND ПСИ AND команда AND CDP) AND deviation_active:0"
+                }
+              },
+              "ad_prod": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP) AND deviation_active:0"
+                }
+              }
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 100000
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "format": {
+    "type": "json",
+    "property": "aggregations.metrics.buckets"
+  }
+},
+// делаем трансформацию по исключениям bitbucket_activity
+    {
+      "name": "block_bb_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "bitbucket_activity.squads_code.buckets"
+          ],
+          "as": [
+            "block_bb_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_bb_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по bitbucket_activity
+    {
+      "name": "block_bb_rest_count",
+      "source": "block_bb_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_bb_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям auto build
+    {
+      "name": "block_ab_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_build.squads_code.buckets"
+          ],
+          "as": [
+            "block_ab_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_ab_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по auto build
+    {
+      "name": "block_ab_rest_count",
+      "source": "block_ab_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_ab_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям auto deploy
+    {
+      "name": "block_ad_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_deploy.squads_code.buckets"
+          ],
+          "as": [
+            "block_ad_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_ad_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по auto deploy
+    {
+      "name": "block_ad_rest_count",
+      "source": "block_ad_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_ad_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям auto testing
+    {
+      "name": "block_at_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_testing.squads_code.buckets"
+          ],
+          "as": [
+            "block_at_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_at_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по auto testing
+    {
+      "name": "block_at_rest_count",
+      "source": "block_at_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_at_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям unit testing
+    {
+      "name": "block_ut_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "unit_testing.squads_code.buckets"
+          ],
+          "as": [
+            "block_ut_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_ut_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по unit testing
+    {
+      "name": "block_ut_rest_count",
+      "source": "block_ut_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_ut_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям ad_st
+    {
+      "name": "block_ad_st_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_st.squads_code.buckets"
+          ],
+          "as": [
+            "block_ad_st_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_ad_st_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_st
+    {
+      "name": "block_ad_st_rest_count",
+      "source": "block_ad_st_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_ad_st_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям at_st
+    {
+      "name": "block_at_st_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_st.squads_code.buckets"
+          ],
+          "as": [
+            "block_at_st_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_at_st_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по at_st
+    {
+      "name": "block_at_st_rest_count",
+      "source": "block_at_st_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_at_st_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям ad_ift
+    {
+      "name": "block_ad_ift_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_ift.squads_code.buckets"
+          ],
+          "as": [
+            "block_ad_ift_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_ad_ift_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_ift
+    {
+      "name": "block_ad_ift_rest_count",
+      "source": "block_ad_ift_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_ad_ift_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям at_ift
+    {
+      "name": "block_at_ift_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_ift.squads_code.buckets"
+          ],
+          "as": [
+            "block_at_ift_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_at_ift_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по at_ift
+    {
+      "name": "block_at_ift_rest_count",
+      "source": "block_at_ift_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_at_ift_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям ad_uat
+    {
+      "name": "block_ad_uat_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_uat.squads_code.buckets"
+          ],
+          "as": [
+            "block_ad_uat_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_ad_uat_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_uat
+    {
+      "name": "block_ad_uat_rest_count",
+      "source": "block_ad_uat_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_ad_uat_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям at_uat
+    {
+      "name": "block_at_uat_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_uat.squads_code.buckets"
+          ],
+          "as": [
+            "block_at_uat_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_at_uat_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по at_uat
+    {
+      "name": "block_at_uat_rest_count",
+      "source": "block_at_uat_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_at_uat_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям ad_prod
+    {
+      "name": "block_ad_prod_rest",
+      "source": "block_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_prod.squads_code.buckets"
+          ],
+          "as": [
+            "block_ad_prod_squads_rest"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.block_ad_prod_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_prod
+    {
+      "name": "block_ad_prod_rest_count",
+      "source": "block_ad_prod_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["block_ad_prod_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+
+// данные по метрикам трайба
+// BitBucket Activity
+    {
+      "name": "selected_tribe_bitbucket_activity",
+      "url": {
+        "index": "metrics-bitbucket-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "squad.buckets"
+          ],
+          "as": [
+            "squad"
+          ]
+        },
+// исключаем команды не в трайбе на текущий момент
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_bb_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "squad.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "c"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }
+      ]
+    },
+// Auto Build
+    {
+      "name": "selected_tribe_auto_build",
+      "url": {
+        "index": "metrics-jenkins-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "tags:(build) AND squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "squad.buckets"
+          ],
+          "as": [
+            "squad"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_bb_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "squad.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "c"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }
+      ]
+    },
+// Unit Testing
+    {
+      "name": "selected_tribe_UT",
+      "url": {
+        "index": "metrics-sonarqube-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  },
+                  "aggs": {
+                    "unit_test": {
+                      "avg": {"field": "Coverage.coverage"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "squad.buckets"
+          ],
+          "as": [
+            "squad"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды с UT = 0 
+        {
+          "type": "filter",
+          "expr": "datum.squad.unit_test.value > 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ut_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "squad.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "c"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }
+      ]
+    },
+// CI - CDL all
+    {
+      "name": "selected_tribe_jenkinscicdl_activity",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+                "aggs": {
+                    "metrics": {
+                      "filters": {
+                        "filters": {
+                          "AD_Dev": {
+                            "query_string": {
+                              "query": "stageName:((Deployment AND Dev*) OR (Deploy AND Dev*) OR (Deploy AND DevBarrier) OR (Deployment AND DevBarrier) OR (Деплой AND DevBarrier) OR (Деплой AND Dev*))"
+                            }
+                          },
+                          "AT_Dev": {
+                            "query_string": {
+                              "query": "stageName:((Smoke AND Test AND Dev*) OR (Auto AND Test AND Dev*) OR (Smoke AND Test AND DevBarrier*) OR (Auto AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND Dev*))"
+                            }
+                          },
+                          "AD_ST": {
+                            "query_string": {
+                              "query": "stageName:((Deployment AND ST*) OR (Deploy AND ST*) OR (Deployment AND DevBarrier*) OR (Deploy AND DevBarrier*) OR (Деплой AND СТ*) OR (Деплой AND DevBarrier*))"
+                            }
+                          },
+                          "AT_ST": {
+                            "query_string": {
+                              "query": "stageName:((Smoke AND Test AND ST*) OR (Auto AND Test AND ST*) OR (Smoke AND Test AND DevBarrier) OR (Auto AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND ST*))"
+                            }
+                          },
+                          "AD_IFT": {
+                            "query_string": {
+                              "query": "stageName:((Deployment AND IFT*) OR (Deploy AND IFT*) OR (Деплой AND ИФТ) OR (Deployment AND RT*) OR (Deploy AND RT*) OR (Деплой AND РТ*) OR (Deploy AND MajorCheck*) OR (Деплой AND MajorCheck*) OR (Deploy AND MinorCheck*) OR (Деплой AND MinorCheck*))"
+                            }
+                          },
+                          "AT_IFT": {
+                            "query_string": {
+                              "query": "stageName:((Smoke AND Test AND IFT*) OR (Auto AND Test AND IFT*) OR (Smoke AND Test AND RT*) OR (Auto AND Test AND RT*) OR (Post AND Dep AND Test AND MajorCheck*) OR (Post AND Dep AND Test AND MinorCheck*))"
+                            }
+                          }
+                        }
+                      },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      }
+    },
+// Auto Deploy
+    {
+      "name": "tribe_AD_Dev",
+      "source": "selected_tribe_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AD_Dev.squad.buckets"
+          ],
+          "as": [
+            "AD_Dev"
+          ]
+        },
+// исключаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.AD_Dev.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ad_rest'), datum.AD_Dev.key) < 0"
+        },        
+        {
+          "type": "aggregate",
+          "fields": [
+            "AD_Dev.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AD_Dev_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    },
+// Auto Testing
+    {
+      "name": "tribe_AT_Dev",
+      "source": "selected_tribe_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AT_Dev.squad.buckets"
+          ],
+          "as": [
+            "AT_Dev"
+          ]
+        },
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.AT_Dev.key) >= 0"
+        },
+// исключаем команды, которые числятся в исключениях ИСУ для выбранного трайба
+
+        {
+          "type": "aggregate",
+          "fields": [
+            "AT_Dev.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AT_Dev_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    },  
+// AD ST
+    {
+      "name": "tribe_AD_ST",
+      "source": "selected_tribe_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AD_ST.squad.buckets"
+          ],
+          "as": [
+            "AD_ST"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.AD_ST.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ad_st_rest'), datum.AD_ST.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AD_ST.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AD_ST_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    }, 
+// AT ST
+    {
+      "name": "tribe_AT_ST",
+      "source": "selected_tribe_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AT_ST.squad.buckets"
+          ],
+          "as": [
+            "AT_ST"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.AT_ST.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_at_st_rest'), datum.AT_ST.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AT_ST.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AT_ST_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    },
+// AD IFT
+    {
+      "name": "tribe_AD_IFT",
+      "source": "selected_tribe_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AD_IFT.squad.buckets"
+          ],
+          "as": [
+            "AD_IFT"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.AD_IFT.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ad_ift_rest'), datum.AD_IFT.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AD_IFT.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AD_IFT_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }   
+      ]
+    },
+// AT IFT
+    {
+      "name": "tribe_AT_IFT",
+      "source": "selected_tribe_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AT_IFT.squad.buckets"
+          ],
+          "as": [
+            "AT_IFT"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.AT_IFT.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_at_ift_rest'), datum.AT_IFT.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AT_IFT.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AT_IFT_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    },
+// CDP all
+    {
+      "name": "selected_tribe_jenkinscdp_activity",
+      "url": {
+        "index": "metrics-jenkinscdp-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+                "aggs": {
+                    "metrics": {
+                      "filters": {
+                        "filters": {
+                          "AD_UAT": {
+                            "query_string": {
+                              "query": "stageName:((Deployment AND UAT*) OR (Deployment AND MajorGo*) OR (Deployment AND MajorCheck*) OR (Deploy AND UAT*) OR (Deploy AND MajorGo*) OR (Deploy AND MinorGo*) OR (Деплой AND UAT*) OR (Деплой AND MajorGo*) OR (Деплой AND MinorGo*))"
+                            }
+                          },
+                          "AT_UAT": {
+                            "query_string": {
+                              "query": "stageName:((Smoke AND Test AND UAT*) OR (Auto AND Test AND UAT*) OR (Smoke AND Test AND MajorGo) OR (Auto AND Test AND MajorGo) OR (Smoke AND Test AND MinorGo*) OR (Auto AND Test AND MinorGo*) OR (Post AND Dep AND Test AND MinorGo*) OR (Post AND Dep AND Test AND MajorGo*) OR (Post AND Dep AND Test AND UAT*))"
+                            }
+                          },
+                          "AD_PROD": {
+                            "query_string": {
+                              "query": "stageName:((Deployment AND PROD*) OR (Deploy AND PROD*) OR (Деплой AND PROD*))"
+                            }
+                          }
+                        }
+                      },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      }
+    },
+// AD UAT
+    {
+      "name": "tribe_AD_UAT",
+      "source": "selected_tribe_jenkinscdp_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AD_UAT.squad.buckets"
+          ],
+          "as": [
+            "AD_UAT"
+          ]
+        },
+// исключаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.AD_UAT.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ad_uat_rest'), datum.AD_UAT.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AD_UAT.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AD_UAT_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    },
+// AT UAT
+    {
+      "name": "tribe_AT_UAT",
+      "source": "selected_tribe_jenkinscdp_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AT_UAT.squad.buckets"
+          ],
+          "as": [
+            "AT_UAT"
+          ]
+        },
+// исключаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.AT_UAT.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_at_uat_rest'), datum.AT_UAT.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AT_UAT.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AT_UAT_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    },
+// AD PROD
+    {
+      "name": "tribe_AD_PROD",
+      "source": "selected_tribe_jenkinscdp_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AD_PROD.squad.buckets"
+          ],
+          "as": [
+            "AD_PROD"
+          ]
+        },
+// исключаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.AD_PROD.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ad_prod_rest'), datum.AD_PROD.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AD_PROD.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AD_PROD_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    },
+    
+// данные по метрика КБ
+// BitBucket Activity
+    {
+      "name": "all_block_bitbucket_activity",
+      "url": {
+        "index": "metrics-bitbucket-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND tribe:((Corporate AND Customets AND 360) OR (Corporate AND Lending) OR (Daily AND Banking) OR (Цифровой AND Корпоративный AND Банк))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "squad.buckets"
+          ],
+          "as": [
+            "squad"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_bb_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "squad.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "c"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }   
+      ]
+    },
+// Auto Build
+    {
+      "name": "all_block_auto_build",
+      "url": {
+        "index": "metrics-jenkins-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "tags:(build) AND squad_type:('Change') AND tribe:((Corporate AND Customets AND 360) OR (Corporate AND Lending) OR (Daily AND Banking) OR (Цифровой AND Корпоративный AND Банк))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "squad.buckets"
+          ],
+          "as": [
+            "squad"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_ab_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "squad.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "c"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }
+      ]
+    },
+// Unit Testing
+    {
+      "name": "all_block_UT",
+      "url": {
+        "index": "metrics-sonarqube-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND tribe:((Corporate AND Customets AND 360) OR (Corporate AND Lending) OR (Daily AND Banking) OR (Цифровой AND Корпоративный AND Банк))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  },
+                  "aggs": {
+                    "unit_test": {
+                      "avg": {"field": "Coverage.coverage"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": [
+            "squad.buckets"
+          ],
+          "as": [
+            "squad"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.squad.key) >= 0"
+        },
+// отсекаем команды с UT = 0
+        {
+          "type": "filter",
+          "expr": "datum.squad.unit_test.value > 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_ut_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "squad.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "c"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }
+      ]
+    },
+// CI - CDL all
+    {
+      "name": "all_block_jenkinscicdl_activity",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND tribe:((Corporate AND Customets AND 360) OR (Corporate AND Lending) OR (Daily AND Banking) OR (Цифровой AND Корпоративный AND Банк))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+                "aggs": {
+                    "metrics": {
+                      "filters": {
+                        "filters": {
+                          "AD_Dev": {
+                            "query_string": {
+                              "query": "stageName:((Deployment AND Dev*) OR (Deploy AND Dev*) OR (Deploy AND DevBarrier) OR (Deployment AND DevBarrier) OR (Деплой AND DevBarrier) OR (Деплой AND Dev*))"
+                            }
+                          },
+                          "AT_Dev": {
+                            "query_string": {
+                              "query": "stageName:((Smoke AND Test AND Dev*) OR (Auto AND Test AND Dev*) OR (Smoke AND Test AND DevBarrier*) OR (Auto AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND Dev*))"
+                            }
+                          },
+                          "AD_ST": {
+                            "query_string": {
+                              "query": "stageName:((Deployment AND ST*) OR (Deploy AND ST*) OR (Deployment AND DevBarrier*) OR (Deploy AND DevBarrier*) OR (Деплой AND СТ*) OR (Деплой AND DevBarrier*))"
+                            }
+                          },
+                          "AT_ST": {
+                            "query_string": {
+                              "query": "stageName:((Smoke AND Test AND ST*) OR (Auto AND Test AND ST*) OR (Smoke AND Test AND DevBarrier) OR (Auto AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND ST*))"
+                            }
+                          },
+                          "AD_IFT": {
+                            "query_string": {
+                              "query": "stageName:((Deployment AND IFT*) OR (Deploy AND IFT*) OR (Деплой AND ИФТ) OR (Deployment AND RT*) OR (Deploy AND RT*) OR (Деплой AND РТ*) OR (Deploy AND MajorCheck*) OR (Деплой AND MajorCheck*) OR (Deploy AND MinorCheck*) OR (Деплой AND MinorCheck*))"
+                            }
+                          },
+                          "AT_IFT": {
+                            "query_string": {
+                              "query": "stageName:((Smoke AND Test AND IFT*) OR (Auto AND Test AND IFT*) OR (Smoke AND Test AND RT*) OR (Auto AND Test AND RT*) OR (Post AND Dep AND Test AND MajorCheck*) OR (Post AND Dep AND Test AND MinorCheck*))"
+                            }
+                          }
+                        }
+                      },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      }
+    },
+// Auto Deploy
+    {
+      "name": "block_AD_Dev",
+      "source": "all_block_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AD_Dev.squad.buckets"
+          ],
+          "as": [
+            "AD_Dev"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.AD_Dev.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_ad_rest'), datum.AD_Dev.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AD_Dev.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AD_Dev_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    }, 
+// Auto Testing
+    {
+      "name": "block_AT_Dev",
+      "source": "all_block_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AT_Dev.squad.buckets"
+          ],
+          "as": [
+            "AT_Dev"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.AT_Dev.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_at_rest'), datum.AT_Dev.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AT_Dev.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AT_Dev_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    }, 
+// AD ST
+    {
+      "name": "block_AD_ST",
+      "source": "all_block_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AD_ST.squad.buckets"
+          ],
+          "as": [
+            "AD_ST"
+          ]
+        },
+// отсекаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.AD_ST.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_ad_st_rest'), datum.AD_ST.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AD_ST.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AD_ST_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    }, 
+// AT ST
+    {
+      "name": "block_AT_ST",
+      "source": "all_block_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AT_ST.squad.buckets"
+          ],
+          "as": [
+            "AT_ST"
+          ]
+        },
+// исключаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.AT_ST.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_at_st_rest'), datum.AT_ST.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AT_ST.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AT_ST_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    }, 
+// AD IFT
+    {
+      "name": "block_AD_IFT",
+      "source": "all_block_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AD_IFT.squad.buckets"
+          ],
+          "as": [
+            "AD_IFT"
+          ]
+        },
+// исключаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.AD_IFT.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_ad_ift_rest'), datum.AD_IFT.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AD_IFT.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AD_IFT_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    }, 
+// AT IFT
+    {
+      "name": "block_AT_IFT",
+      "source": "all_block_jenkinscicdl_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AT_IFT.squad.buckets"
+          ],
+          "as": [
+            "AT_IFT"
+          ]
+        },
+// исключаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.AT_IFT.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_at_ift_rest'), datum.AT_IFT.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AT_IFT.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AT_IFT_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    }, 
+// CDP all
+    {
+      "name": "all_block_jenkinscdp_activity",
+      "url": {
+        "index": "metrics-jenkinscdp-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND tribe:((Corporate AND Customets AND 360) OR (Corporate AND Lending) OR (Daily AND Banking) OR (Цифровой AND Корпоративный AND Банк))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+                "aggs": {
+                    "metrics": {
+                      "filters": {
+                        "filters": {
+                          "AD_UAT": {
+                            "query_string": {
+                              "query": "stageName:((Deployment AND UAT*) OR (Deployment AND MajorGo*) OR (Deployment AND MajorCheck*) OR (Deploy AND UAT*) OR (Deploy AND MajorGo*) OR (Deploy AND MinorGo*) OR (Деплой AND UAT*) OR (Деплой AND MajorGo*) OR (Деплой AND MinorGo*))"
+                            }
+                          },
+                          "AT_UAT": {
+                            "query_string": {
+                              "query": "stageName:((Smoke AND Test AND UAT*) OR (Auto AND Test AND UAT*) OR (Smoke AND Test AND MajorGo) OR (Auto AND Test AND MajorGo) OR (Smoke AND Test AND MinorGo*) OR (Auto AND Test AND MinorGo*) OR (Post AND Dep AND Test AND MinorGo*) OR (Post AND Dep AND Test AND MajorGo*) OR (Post AND Dep AND Test AND UAT*))"
+                            }
+                          },
+                          "AD_PROD": {
+                            "query_string": {
+                              "query": "stageName:((Deployment AND PROD*) OR (Deploy AND PROD*) OR (Деплой AND PROD*))"
+                            }
+                          }
+                        }
+                      },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      }
+    }, 
+// AD UAT
+    {
+      "name": "block_AD_UAT",
+      "source": "all_block_jenkinscdp_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AD_UAT.squad.buckets"
+          ],
+          "as": [
+            "AD_UAT"
+          ]
+        },
+// исключаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.AD_UAT.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_ad_uat_rest'), datum.AD_UAT.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AD_UAT.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AD_UAT_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    }, 
+// AT UAT
+    {
+      "name": "block_AT_UAT",
+      "source": "all_block_jenkinscdp_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AT_UAT.squad.buckets"
+          ],
+          "as": [
+            "AT_UAT"
+          ]
+        },
+// исключаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.AT_UAT.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_at_uat_rest'), datum.AT_UAT.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AT_UAT.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AT_UAT_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    }, 
+// AD PROD
+    {
+      "name": "block_AD_PROD",
+      "source": "all_block_jenkinscdp_activity",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "metrics.buckets.AD_PROD.squad.buckets"
+          ],
+          "as": [
+            "AD_PROD"
+          ]
+        },
+// исключаем команды не в блоке на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x2'), datum.AD_PROD.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_block_ad_prod_rest'), datum.AD_PROD.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": [
+            "AD_PROD.key"
+          ],
+          "ops": [
+            "count"
+          ],
+          "as": [
+            "AD_PROD_squads"
+          ],
+          "groupby": [
+            "key"
+          ]
+        }      
+      ]
+    }, 
+    
+// данные по всем задачам всех метрик для выбранного трайба    
+    {
+      "name": "isu_tasks",
+      "url": {
+        "index": "metrics-isu-csv-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND pokaz_name:((Bitbucket AND Activity AND VCS AND CI) OR (Auto AND build) OR (Auto AND Deploy) OR (Отсутствие AND AutoTest AND команда AND CI) OR (Отсутствуют AND UT AND команда AND CI) OR (Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL) OR (Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL) OR (Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL) OR (Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL) OR (Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP) OR (Отсутствие AND Autotest AND ПСИ AND команда AND CDP) OR (Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP)) OR dev_tag:((version AND control AND system AND CI) OR (Auto AND build) OR (Auto AND Deploy) OR (Отсутствие AND AutoTest AND команда AND CI) OR (Отсутствуют AND UT AND команда AND CI) OR (Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL) OR (Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL) OR (Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL) OR (Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL) OR (Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP) OR (Отсутствие AND Autotest AND ПСИ AND команда AND CDP) OR (Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP)) AND status:((Не AND начата) OR (В AND работе))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+                "hist": {
+                  "date_histogram": {
+                    "field": "@timestamp",
+                    "interval": "1w",
+                    "time_zone": "Europe/Moscow"
+                  },
+                  "aggs": {
+                    "count": {
+                      "cardinality": {
+                        "field": "squad_code.keyword"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      }
+    },
+// default timestamp для оси Х
+    {
+      "name": "default_time_step",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      }
+},
+// считаем % здоровых команд для выбранного трайба и КБ
+    {
+      "name": "all_metrics",
+      "source": "default_time_step",
+      "transform": [
+        {
+          "type": "lookup",
+          "from": "selected_tribe_bitbucket_activity",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["c"],
+          "as": ["tribe_bitbucket"],
+          "default": 0
+        },
+         {
+          "type": "lookup",
+          "from": "selected_tribe_auto_build",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["c"],
+          "as": ["tribe_auto_build"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "selected_tribe_UT",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["c"],
+          "as": ["tribe_UT"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "tribe_AD_Dev",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AD_Dev_squads"],
+          "as": ["tribe_AD_Dev"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "tribe_AT_Dev",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AT_Dev_squads"],
+          "as": ["tribe_AT_Dev"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "tribe_AD_ST",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AD_ST_squads"],
+          "as": ["tribe_AD_ST"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "tribe_AT_ST",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AT_ST_squads"],
+          "as": ["tribe_AT_ST"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "tribe_AD_IFT",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AD_IFT_squads"],
+          "as": ["tribe_AD_IFT"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "tribe_AT_IFT",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AT_IFT_squads"],
+          "as": ["tribe_AT_IFT"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "tribe_AD_UAT",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AD_UAT_squads"],
+          "as": ["tribe_AD_UAT"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "tribe_AT_UAT",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AT_UAT_squads"],
+          "as": ["tribe_AT_UAT"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "tribe_AD_PROD",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AD_PROD_squads"],
+          "as": ["tribe_AD_PROD"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "all_block_bitbucket_activity",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["c"],
+          "as": ["block_bitbucket"],
+          "default": 0
+        },
+         {
+          "type": "lookup",
+          "from": "all_block_auto_build",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["c"],
+          "as": ["block_auto_build"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "all_block_UT",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["c"],
+          "as": ["block_UT"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "block_AD_Dev",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AD_Dev_squads"],
+          "as": ["block_AD_Dev"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "block_AT_Dev",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AT_Dev_squads"],
+          "as": ["block_AT_Dev"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "block_AD_ST",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AD_ST_squads"],
+          "as": ["block_AD_ST"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "block_AT_ST",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AT_ST_squads"],
+          "as": ["block_AT_ST"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "block_AD_IFT",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AD_IFT_squads"],
+          "as": ["block_AD_IFT"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "block_AT_IFT",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AT_IFT_squads"],
+          "as": ["block_AT_IFT"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "block_AD_UAT",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AD_UAT_squads"],
+          "as": ["block_AD_UAT"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "block_AT_UAT",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AT_UAT_squads"],
+          "as": ["block_AT_UAT"],
+          "default": 0
+        },
+        {
+          "type": "lookup",
+          "from": "block_AD_PROD",
+          "key": "key",
+          "fields": ["key"],
+          "values": ["AD_PROD_squads"],
+          "as": ["block_AD_PROD"],
+          "default": 0
+        },
+        {
+          "type": "formula",
+          "expr": "round((datum.tribe_bitbucket + datum.tribe_auto_build + datum.tribe_UT + datum.tribe_AD_Dev + datum.tribe_AT_Dev + datum.tribe_AD_ST + datum.tribe_AT_ST + datum.tribe_AD_IFT + datum.tribe_AT_IFT +  datum.tribe_AD_UAT + datum.tribe_AT_UAT + datum.tribe_AD_PROD)/((n_of_squads - tribe_bb_restrictors) + (n_of_squads - tribe_ab_restrictors) + (n_of_squads - tribe_ad_restrictors) + (n_of_squads - tribe_at_restrictors) + (n_of_squads - tribe_ut_restrictors) + (n_of_squads - tribe_ad_st_restrictors) + (n_of_squads - tribe_at_st_restrictors) + (n_of_squads - tribe_ad_ift_restrictors) + (n_of_squads - tribe_at_ift_restrictors) + (n_of_squads - tribe_ad_uat_restrictors) + (n_of_squads - tribe_at_uat_restrictors) + (n_of_squads - tribe_ad_prod_restrictors)) * 100)",
+          "as": "tribe_good_squads"
+        },
+        {
+          "type": "formula",
+          "expr": "round((datum.block_bitbucket + datum.block_auto_build + datum.block_UT + datum.block_AD_Dev + datum.block_AT_Dev + datum.block_AD_ST + datum.block_AT_ST + datum.block_AD_IFT + datum.block_AT_IFT + datum.block_AD_UAT + datum.block_AT_UAT + datum.block_AD_PROD)/((n_block_squads - block_bb_restrictors) + (n_block_squads - block_ab_restrictors) + (n_block_squads - block_ad_restrictors) + (n_block_squads - block_at_restrictors) + (n_block_squads - block_ut_restrictors) + (n_block_squads - block_ad_st_restrictors) + (n_block_squads - block_at_st_restrictors) + (n_block_squads - block_ad_ift_restrictors) + (n_block_squads - block_at_ift_restrictors) + (n_block_squads - block_ad_uat_restrictors) + (n_block_squads - block_at_uat_restrictors) + (n_block_squads - block_ad_prod_restrictors)) * 100)",
+          "as": "block_good_squads"
+        }
+      ]     
+    }
+  ],
+  
+  "marks": [
+        {
+          "type": "line",
+          "from": {"data": "all_metrics"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "key"},
+              "y": {"scale": "y", "field": "block_good_squads"},
+              "stroke": {"value": "#999"},
+              "strokeWidth": {"value": 4}
+            },
+            "hover": {
+              "fillOpacity": {"value": 0.5}
+            }
+          }
+        },
+        {
+  "type": "symbol",
+      "from": {"data": "all_metrics"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "y": {"scale": "y", "field": "block_good_squads"},
+          "size": {"value": 160},
+          "shape": {"value": "circle"},
+          "fill": {
+              "value": "#999"
+            },
+          zindex: 1
+        }
+      }
+    },
+        {
+          "type": "text",
+          "from": {"data": "all_metrics"},
+          "encode": {
+            "enter": {
+          "x": {"scale": "x", "field": "key"},
+          "y": {"scale": "y", "field": "block_good_squads", "offset": -20},
+              "fill": {"value": "#999"},
+              "align": {"value": "top"},
+              "baseline": {"value": "middle"},
+              "text": {"signal": "datum.block_good_squads + '%'"}
+            }
+          }
+        },
+        {
+          "type": "line",
+          "from": {"data": "all_metrics"},
+          "encode": {
+            "enter": {
+              "x": {"scale": "x", "field": "key"},
+              "y": {"scale": "y", "field": "tribe_good_squads"},
+              "stroke": {"value": "#1B998B"},
+              "strokeWidth": {"value": 4}
+            },
+            "hover": {
+              "fillOpacity": {"value": 0.5}
+            }
+          }
+        },
+        {
+  "type": "symbol",
+      "from": {"data": "all_metrics"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "y": {"scale": "y", "field": "tribe_good_squads"},
+          "size": {"value": 160},
+          "shape": {"value": "circle"},
+          "fill": {
+              "value": "#1B998B"
+            },
+          zindex: 1
+        }
+      }
+    },
+        {
+          "type": "text",
+          "from": {"data": "all_metrics"},
+          "encode": {
+            "enter": {
+          "x": {"scale": "x", "field": "key"},
+          "y": {"scale": "y", "field": "tribe_good_squads", "offset": -20},
+              "fill": {"value": "#1B998B"},
+              "align": {"value": "top"},
+              "baseline": {"value": "middle"},
+              "text": {"signal": "datum.tribe_good_squads + '%'"}
+            }
+          }
+        },
+        {
+      "comment": "выводим данные по количеству команд с открытыми задачами ИСУ",
+      "type": "symbol",
+      "from": {
+        "data": "isu_tasks"
+      },
+      "encode": {
+        "update": {
+        "size": {"value":"400"},
+          "x": {"scale": "x", "field": "key"},
+          
+          "y": {
+            "signal": "-x_step/10"
+          },
+          "y2": {
+            "signal": "datum.count.value > 0 ? ((datum.count.value * 100 / height/4)*(-1)) : 0"
+          },
+          "fill": {
+            "value": "#eee"
+          }
+        }
+      }
+    },
+        {
+      "comment": "выводим подписи данных",
+      "type": "text",
+      "from": {
+        "data": "isu_tasks"
+      },
+      "encode": {
+        "enter": {
+          "x": {"scale": "x", "field": "key"},
+          "y": {
+            "signal": "datum.count.value > 0 ? ((datum.count.value * 100 / height/4)*(-1)) : 0",
+            offset: {"signal":"-x_step/7"}
+          },
+          "fill": {
+            "value": "#272727"
+          },
+          "baseline": {
+            "value": "top"
+          },
+          "align": {
+            "value": "center"
+          },
+          "text": {
+            "signal": "datum.count.value"
+          },
+          "font": {
+            "value": "Segoe UI, Open Sans, Arial"
+          },
+          "fontSize": {
+            "value": 13
+          }
+        }
+      }
+    }
+  ],
+  
+  "signals": [
+// data() - вывести данные из data
+    {
+      "name": "1",
+      "update1": "warn(data('tribe_at_uat_rest_count'))"
+    },
+// domain() - вывести данные из scales
+    {
+      "name": "2",
+      "update1": "warn(domain('scale_tribe_bb_rest'))"
+    },
+    {
+      "name": "3",
+      "update1": "warn(domain('x0'))"
+    },
+    {
+      "name": "4",
+      "update1": "warn(data('squad_code'))"
+    },
+    {
+      "name": "5",
+      "update1": "warn(data('tribe_restrictions_all'))"
+    },
+    {
+      "name": "6",
+      "update1": "warn(data('tribe_bb_rest'))"
+    },
+    {
+      "name": "n_of_squads",
+      "update": "data('squad_code').length"
+    },
+    {
+      "name": "n_block_squads",
+      "update": "data('block_squad_code').length"
+    },
+// переменные по исключениям для выбранного трайба
+    {
+      "name": "tribe_bb_restrictors",
+      "update": "data('tribe_bb_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ab_restrictors",
+      "update": "data('tribe_ab_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ad_restrictors",
+      "update": "data('tribe_ad_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_at_restrictors",
+      "update": "data('tribe_at_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ut_restrictors",
+      "update": "data('tribe_ut_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ad_st_restrictors",
+      "update": "data('tribe_ad_st_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_at_st_restrictors",
+      "update": "data('tribe_at_st_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ad_ift_restrictors",
+      "update": "data('tribe_ad_ift_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_at_ift_restrictors",
+      "update": "data('tribe_at_ift_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ad_uat_restrictors",
+      "update": "data('tribe_ad_uat_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_at_uat_restrictors",
+      "update": "data('tribe_at_uat_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ad_prod_restrictors",
+      "update": "data('tribe_ad_prod_rest_count')[0].c"
+    },
+// переменные по исключениям для КБ
+    {
+      "name": "block_bb_restrictors",
+      "update": "data('block_bb_rest_count')[0].c"
+    },
+    {
+      "name": "block_ab_restrictors",
+      "update": "data('block_ab_rest_count')[0].c"
+    },
+    {
+      "name": "block_ad_restrictors",
+      "update": "data('block_ad_rest_count')[0].c"
+    },
+    {
+      "name": "block_at_restrictors",
+      "update": "data('block_at_rest_count')[0].c"
+    },
+    {
+      "name": "block_ut_restrictors",
+      "update": "data('block_ut_rest_count')[0].c"
+    },
+    {
+      "name": "block_ad_st_restrictors",
+      "update": "data('block_ad_st_rest_count')[0].c"
+    },
+    {
+      "name": "block_at_st_restrictors",
+      "update": "data('block_at_st_rest_count')[0].c"
+    },
+    {
+      "name": "block_ad_ift_restrictors",
+      "update": "data('block_ad_ift_rest_count')[0].c"
+    },
+    {
+      "name": "block_at_ift_restrictors",
+      "update": "data('block_at_ift_rest_count')[0].c"
+    },
+    {
+      "name": "block_ad_uat_restrictors",
+      "update": "data('block_ad_uat_rest_count')[0].c"
+    },
+    {
+      "name": "block_at_uat_restrictors",
+      "update": "data('block_at_uat_rest_count')[0].c"
+    },
+    {
+      "name": "block_ad_prod_restrictors",
+      "update": "data('block_ad_prod_rest_count')[0].c"
+    },
+    {
+      "name": "x_step",
+      "update": "width/domain('x').length"
+    },
+    {
+    "name": "isu_max",
+    "update": "data('isu_tasks').length > 0 ? (max(data('isu_tasks')[0].count.value)) : 0"
+    }
+  ],
+  
+  "scales": [
+    {
+      "name": "x0",
+      "type": "band",
+      "domain": {
+        "data": "squad_code",
+        "field": "key",
+        "sort": true
+      }
+    },
+    {
+      "name": "x2",
+      "type": "band",
+      "domain": {
+        "data": "block_squad_code",
+        "field": "key",
+        "sort": true
+      }
+    },
+    {
+      "name": "x",
+      "type": "point",
+      "range": "width",
+      "domain": {"data": "default_time_step", "field": "key"}
+    },
+    {
+      "name": "y",
+      "type": "linear",
+      "range": "height",
+      "nice": true,
+      "zero": true,
+      "domain": [0, 100]
+    },
+    {
+      "name": "y2",
+      "type": "linear",
+      "range": "height",
+      "nice": true,
+      "zero": true,
+      "domain": [0, {
+          "signal": "height/4*(-1)"
+        }]
+    },
+    {
+      "name": "color",
+      "type": "ordinal",
+      "domain": [
+        "% здоровых команд КБ",
+        "% здоровых команд трайба",
+        "N команд с незакрытыми задачами в ИСУ"
+      ],
+      "range": [
+        "#999",
+        "#1B998B",
+        "#eee"
+      ]
+    },
+    {
+      "name": "scale_tribe_bb_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_bb_rest",
+        "field": "tribe_bb_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ab_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ab_rest",
+        "field": "tribe_ab_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ad_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ad_rest",
+        "field": "tribe_ad_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_at_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_at_rest",
+        "field": "tribe_at_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ut_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ut_rest",
+        "field": "tribe_ut_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ad_st_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ad_st_rest",
+        "field": "tribe_ad_st_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_at_st_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_at_st_rest",
+        "field": "tribe_at_st_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ad_ift_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ad_ift_rest",
+        "field": "tribe_ad_ift_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_at_ift_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_at_ift_rest",
+        "field": "tribe_at_ift_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ad_uat_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ad_uat_rest",
+        "field": "tribe_ad_uat_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_at_uat_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_at_uat_rest",
+        "field": "tribe_at_uat_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ad_prod_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ad_prod_rest",
+        "field": "tribe_ad_prod_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_bb_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_bb_rest",
+        "field": "block_bb_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_ab_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_ab_rest",
+        "field": "block_ab_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_ad_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_ad_rest",
+        "field": "block_ad_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_at_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_at_rest",
+        "field": "block_at_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_ut_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_ut_rest",
+        "field": "block_ut_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_ad_st_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_ad_st_rest",
+        "field": "block_ad_st_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_at_st_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_at_st_rest",
+        "field": "block_at_st_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_ad_ift_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_ad_ift_rest",
+        "field": "block_ad_ift_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_at_ift_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_at_ift_rest",
+        "field": "block_at_ift_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_ad_uat_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_ad_uat_rest",
+        "field": "block_ad_uat_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_at_uat_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_at_uat_rest",
+        "field": "block_at_uat_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_block_ad_prod_rest",
+      "type": "band",
+      "domain": {
+        "data": "block_ad_prod_rest",
+        "field": "block_ad_prod_squads_rest.key",
+        "sort": true
+      }
+    }
+  ],
+  
+  "axes": [
+    {
+    "scale": "x", 
+    "orient": "bottom", 
+    "encode": {
+        "labels": {
+          "update": {
+            "text": {
+              "signal": "timeFormat(datum.value, '%d.%m')"
+            },
+            
+            "fill": {
+              "value": "#999"
+            },
+            "align": {
+              "value": "center"
+            },
+            "baseline": {
+              "value": "top"
+            },
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Helvetica, Open Sans, Arial"
+            }
+          }
+        }
+     }
+    },
+    {
+    "scale": "y",
+    "orient": "left", 
+    "grid": true,
+    "encode": {
+        "labels": {
+          "update": {
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Open Sans, Arial"
+            },
+            "fill": {
+              "value": "#999"
+            }
+          }
+        },
+        "grid": {
+        "update": {
+        "stroke": {"value": "#333"},
+        "strokeWidth": {"value": 0.3}
+
+}
+        }
+      }
+      }
+  ],
+
+  "legends": [
+    {
+      "fill": "color",
+      "encode": {
+        "labels": {
+          "update": {
+"limit":{
+"value": 2000
+},          
+            "fontSize": {
+              "value": 13
+            },
+            "font": {
+              "value": "Segoe UI, Open Sans, Arial"
+            },
+            "fill": {
+              "value": "#999"
+            }
+          }
+        },
+        
+        "symbols": {
+          "update": {
+            "stroke": {
+              "value": "transparent"
+            }
+          }
+        }
+      },
+      "orient": "bottom",
+      
+    }
+  ],
+
+  "config": {
+    "style": {
+      "cell": {
+        "stroke": "transparent"
+      }
+    },
+    
+    "title": {
+      "fontSize": 20,
+      "offset": "15",
+      "fontWeight": "normal",
+      "font": {
+        "value": "Segoe UI Light, Helvetica, Open Sans, Arial"
+      },
+      "color": {"value": "#eee"}
+    },
+    "axis": {
+      "titleColor": "#ddd",
+      "titleFontWeight": "normal",
+      "domainColor": "#444",
+      "tickColor": "#444",
+      
+      "titleFont": {
+        "value": "Segoe UI Light, Helvetica, Open Sans, Arial"
+      }
+    }
+  }
+}
