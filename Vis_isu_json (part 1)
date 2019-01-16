@@ -1,0 +1,40 @@
+{
+  "table": {
+    "index": "metrics-isu-csv-*",
+    "size":0,
+    "query": {
+      "bool": {
+        "must": [ 
+            "_DASHBOARD_CONTEXT_",
+             {
+                  "query_string": {
+                    "query": "strim:(DevOps) AND pokaz_name:((Bitbucket AND Activity AND VCS AND CI) OR (Auto AND build) OR (Auto AND Deploy) OR (Отсутствие AND AutoTest AND команда AND CI) OR (Отсутствуют AND UT AND команда AND CI) OR (Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL) OR (Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL) OR (Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL) OR (Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL) OR (Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP) OR (Отсутствие AND Autotest AND ПСИ AND команда AND CDP) OR (Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP)) OR dev_tag:((version AND control AND system AND CI) OR (Auto AND build) OR (Auto AND Deploy) OR (Отсутствие AND AutoTest AND команда AND CI) OR (Отсутствуют AND UT AND команда AND CI) OR (Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL) OR (Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL) OR (Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL) OR (Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL) OR (Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP) OR (Отсутствие AND Autotest AND ПСИ AND команда AND CDP) OR (Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP))"
+                  }
+                }
+            ]
+      }
+    },
+    "aggs": {
+            "task": {
+              "terms": {"field": "id_task", "size": 10000000},
+              "aggs": {
+                "isu_task_details": {
+                  "top_hits": {
+                    "size": 1,
+                    "sort": [{"@timestamp": "desc"}],
+                    "_source": {"includes": [
+                        "id_task", 
+                        "pokaz_name", 
+                        "status",
+                        "task_start_date",
+                        "employee_name", 
+                        "strim",
+                        "role_subj",
+                        "escalation"]}
+                  }
+                }
+              }
+            }
+          }
+  }
+}
