@@ -1,0 +1,2687 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v3.0.json",
+  "title": "",
+  
+  "data": [
+// шкала Y
+    {
+      "name": "source",
+      "values": [
+        {"a": "Bitbucket Activity", "b": 1},
+        {"a": "Auto Build", "b": 2},
+        {"a": "Auto Deploy", "b": 3},
+        {"a": "Auto Testing", "b": 4},
+        {"a": "Unit Testing", "b": 5},
+        {"a": "Auto Deploy ST", "b": 6},
+        {"a": "Auto Test ST", "b": 7},
+        {"a": "Auto Deploy IFT", "b": 8},
+        {"a": "Auto Test IFT", "b": 9},
+        {"a": "Auto Deploy UAT", "b": 10},
+        {"a": "Auto Test UAT", "b": 11},
+        {"a": "Auto Deploy PROD", "b": 12}
+      ]
+    },
+// default time step 
+    {
+      "name": "default_time_step",
+      "url": {
+        "index": "metrics-jenkins-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+// подумать может это условие удалить
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp": {
+                      "%timefilter%": true
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+        "transform": [
+         {
+          "type": "formula",
+          "expr": "['Bitbucket Activity', 'Auto Build', 'Auto Deploy', 'Auto Testing', 'Unit Testing', 'Auto Deploy ST', 'Auto Test ST', 'Auto Deploy IFT', 'Auto Test IFT', 'Auto Deploy UAT', 'Auto Test UAT', 'Auto Deploy PROD']",
+          "as": "type"
+        }   
+  ]
+},
+
+// коды команд из SAP-МУСС
+    {
+      "comment": "Выводим перечень кодов команд и их единственных названий",
+      "name": "squad_code",
+      "url": {
+        "index": "metrics-mappings-sbergilestruct",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {
+                    "@timestamp":
+                      {"time_zone": "Europe/Moscow",  "gte": "now-7d",                  "lte": "now"}
+                  }
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 10000
+              },
+              "aggs": {
+                "squads": {
+                  "terms": {
+                    "field": "squad.keyword",
+                    "size": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.squads_code.buckets"
+      }
+    },
+
+// все исключения для выбранного трайба
+    {
+  "comment": "загружаем все неприменимые практики для трайба",
+  "name": "tribe_restrictions_all",
+  "url": {
+    "index": "metrics-mappings-isu-restrictions-*",
+    "body": {
+      "size": 0,
+      "query": {
+        "bool": {
+          "must": [
+            "%dashboard_context-must_clause%",
+            {
+              "range": {
+                "date_end": {
+                  "time_zone": "Europe/Moscow",
+                  "gt": "now+1d"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "aggs": {
+        "metrics": {
+          "filters": {
+            "filters": {
+              "bitbucket_activity": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0"
+                }
+              },
+              "auto_build": {
+                "query_string": {
+                  "query": "deviation_name:(Auto AND build) AND deviation_active:0"
+                }
+              },
+              "auto_deploy": {
+                "query_string": {
+                  "query": "deviation_name:(Auto AND Deploy) AND deviation_active:0"
+                }
+              },
+              "auto_testing": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND данных AND version AND control AND system AND CI) AND deviation_active:0"
+                }
+              },
+              "unit_testing": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствуют AND UT AND команда AND CI) AND deviation_active:0"
+                }
+              },
+              "ad_st": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND системного AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "at_st": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND системного AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "ad_ift": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND интеграционно-функционального AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "at_ift": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND интеграционно-функционального AND тестирования AND команда AND CDL) AND deviation_active:0"
+                }
+              },
+              "ad_uat": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND ПСИ AND команда AND CDP) AND deviation_active:0"
+                }
+              },
+              "at_uat": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autotest AND ПСИ AND команда AND CDP) AND deviation_active:0"
+                }
+              },
+              "ad_prod": {
+                "query_string": {
+                  "query": "deviation_name:(Отсутствие AND Autodeploy AND ПРОД AND команда AND CDP) AND deviation_active:0"
+                }
+              }
+            }
+          },
+          "aggs": {
+            "squads_code": {
+              "terms": {
+                "field": "squad_code.keyword",
+                "size": 100000
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "format": {
+    "type": "json",
+    "property": "aggregations.metrics.buckets"
+  }
+},
+// делаем трансформацию по исключениям bitbucket_activity
+    {
+      "name": "tribe_bb_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "bitbucket_activity.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_bb_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_bb_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по bitbucket_activity
+    {
+      "name": "tribe_bb_rest_count",
+      "source": "tribe_bb_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_bb_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям auto build
+    {
+      "name": "tribe_ab_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_build.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ab_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ab_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по auto build
+    {
+      "name": "tribe_ab_rest_count",
+      "source": "tribe_ab_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ab_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям auto deploy
+    {
+      "name": "tribe_ad_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_deploy.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ad_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по auto deploy
+    {
+      "name": "tribe_ad_rest_count",
+      "source": "tribe_ad_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ad_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям auto testing
+    {
+      "name": "tribe_at_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "auto_testing.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_at_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по auto testing
+    {
+      "name": "tribe_at_rest_count",
+      "source": "tribe_at_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_at_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям unit testing
+    {
+      "name": "tribe_ut_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "unit_testing.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ut_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ut_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по unit testing
+    {
+      "name": "tribe_ut_rest_count",
+      "source": "tribe_ut_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ut_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям ad_st
+    {
+      "name": "tribe_ad_st_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_st.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_st_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ad_st_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_st
+    {
+      "name": "tribe_ad_st_rest_count",
+      "source": "tribe_ad_st_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ad_st_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям at_st
+    {
+      "name": "tribe_at_st_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_st.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_st_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_at_st_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по at_st
+    {
+      "name": "tribe_at_st_rest_count",
+      "source": "tribe_at_st_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_at_st_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям ad_ift
+    {
+      "name": "tribe_ad_ift_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_ift.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_ift_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ad_ift_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_ift
+    {
+      "name": "tribe_ad_ift_rest_count",
+      "source": "tribe_ad_ift_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ad_ift_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям at_ift
+    {
+      "name": "tribe_at_ift_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_ift.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_ift_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_at_ift_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по at_ift
+    {
+      "name": "tribe_at_ift_rest_count",
+      "source": "tribe_at_ift_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_at_ift_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },	
+// делаем трансформацию по исключениям ad_uat
+    {
+      "name": "tribe_ad_uat_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_uat.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_uat_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ad_uat_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_uat
+    {
+      "name": "tribe_ad_uat_rest_count",
+      "source": "tribe_ad_uat_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ad_uat_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям at_uat
+    {
+      "name": "tribe_at_uat_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "at_uat.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_at_uat_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_at_uat_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по at_uat
+    {
+      "name": "tribe_at_uat_rest_count",
+      "source": "tribe_at_uat_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_at_uat_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+// делаем трансформацию по исключениям ad_prod
+    {
+      "name": "tribe_ad_prod_rest",
+      "source": "tribe_restrictions_all",
+      "transform": [
+         {
+          "type": "flatten",
+          "fields": [
+            "ad_prod.squads_code.buckets"
+          ],
+          "as": [
+            "tribe_ad_prod_squads_rest"
+          ]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.tribe_ad_prod_squads_rest.key) >= 0"
+        }
+      ]
+    },
+// считаем количество команд в исключениях по ad_prod
+    {
+      "name": "tribe_ad_prod_rest_count",
+      "source": "tribe_ad_prod_rest",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["tribe_ad_prod_squads_rest.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        }
+      ]
+    },
+
+// метрика BitBucket Activity
+    {
+      "name": "bitbucket_activity",
+      "url": {
+        "index": "metrics-bitbucket-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_bb_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_bb_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Bitbucket Activity'",
+          "as": "type"
+        }
+      ]
+    },
+// метрика Auto Build
+    {
+      "name": "auto_build",
+      "url": {
+        "index": "metrics-jenkins-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "tags:(build) AND squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ab_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_ab_restrictors)*100)",
+          "as": "d"
+        },
+        {"type": "formula", "expr": "'Auto Build'", "as": "type"}
+      ]
+    },
+// метрика Unit Testing
+    {
+      "name": "unit_testing",
+      "url": {
+        "index": "metrics-sonarqube-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change')"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 100000
+                  },
+                  "aggs": {
+                    "unit_test": {
+                      "avg": {"field": "Coverage.coverage"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды с UT = 0
+        {
+          "type": "filter",
+          "expr": "datum.squad.unit_test.value > 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ut_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squad.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_ut_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Unit Testing'",
+          "as": "type"
+        }
+      ]
+    },
+// метрика Auto Deploy
+    {
+      "name": "auto_deploy",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName: ((Deployment AND Dev*) OR (Deploy AND Dev*) OR (Deploy AND DevBarrier*) OR (Deployment AND DevBarrier*) OR (Деплой AND DevBarrier*) OR (Деплой AND Dev*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ad_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_ad_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy'",
+          "as": "type"
+        }
+      ]
+    },
+// метрика Auto Testing
+    {
+      "name": "auto_testing",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Smoke AND Test AND Dev*) OR (Auto AND Test AND Dev*) OR (Smoke AND Test AND DevBarrier*) OR (Auto AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND Dev*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_at_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_at_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Testing'",
+          "as": "type"
+        }
+      ]
+    },
+// метрика Auto Deploy ST
+    {
+      "name": "auto_deploy_st",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Deployment AND ST*) OR (Deploy AND ST*) OR (Deployment AND DevBarrier*) OR (Deploy AND DevBarrier*) OR (Деплой AND СТ*) OR (Деплой AND DevBarrier*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ad_st_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_ad_st_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy ST'",
+          "as": "type"
+        }
+      ]
+    },
+// метрика Auto Test ST
+    {
+      "name": "auto_test_st",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Smoke AND Test AND ST*) OR (Auto AND Test AND ST*) OR (Smoke AND Test AND DevBarrier) OR (Auto AND Test AND DevBarrier*) OR (Post AND Dep AND Test AND ST*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// исключаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_at_st_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_at_st_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test ST'",
+          "as": "type"
+        }
+      ]
+    },
+// метрика Auto Deploy IFT
+    {
+      "name": "auto_deploy_ift",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Deployment AND IFT*) OR (Deploy AND IFT*) OR (Деплой AND ИФТ) OR (Deployment AND RT*) OR (Deploy AND RT*) OR (Деплой AND РТ*) OR (Deploy AND MajorCheck*) OR (Деплой AND MajorCheck*) OR (Deploy AND MinorCheck*) OR (Деплой AND MinorCheck*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодн
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ad_ift_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_ad_ift_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy IFT'",
+          "as": "type"
+        }
+      ]
+    },
+// метрика Auto Test IFT
+    {
+      "name": "auto_test_ift",
+      "url": {
+        "index": "metrics-jenkins-*, metrics-jenkinsqa-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Smoke AND Test AND IFT*) OR (Auto AND Test AND IFT*) OR (Smoke AND Test AND RT*) OR (Auto AND Test AND RT*) OR (Post AND Dep AND Test AND MajorCheck*) OR (Post AND Dep AND Test AND MinorCheck*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_at_ift_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_at_ift_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test IFT'",
+          "as": "type"
+        }
+      ]
+    },
+// метрика Auto Deploy UAT
+    {
+      "name": "auto_deploy_uat",
+      "url": {
+        "index": "metrics-jenkinscdp-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Deployment AND UAT*) OR (Deployment AND MajorGo*) OR (Deployment AND MajorCheck*) OR (Deploy AND UAT*) OR (Deploy AND MajorGo*) OR (Deploy AND MinorGo*) OR (Деплой AND UAT*) OR (Деплой AND MajorGo*) OR (Деплой AND MinorGo*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ad_uat_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_ad_uat_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy UAT'",
+          "as": "type"
+        }
+      ]
+    },
+// метрика Auto Test UAT
+    {
+      "name": "auto_test_uat",
+      "url": {
+        "index": "metrics-jenkinscdp-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName:((Smoke AND Test AND UAT*) OR (Auto AND Test AND UAT*) OR (Smoke AND Test AND MajorGo) OR (Auto AND Test AND MajorGo) OR (Smoke AND Test AND MinorGo*) OR (Auto AND Test AND MinorGo*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_at_uat_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_at_uat_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Test UAT'",
+          "as": "type"
+        }
+      ]
+    },
+// метрика Auto Deploy PROD
+    {
+      "name": "auto_deploy_prod",
+      "url": {
+        "index": "metrics-jenkinscdp-*",
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "must": [
+                "%dashboard_context-must_clause%",
+                {
+                  "range": {"@timestamp": {"%timefilter%": true}}
+                },
+                {
+                  "query_string": {
+                    "query": "squad_type:('Change') AND stageName: ((Deployment AND PROD*) OR (Deploy AND PROD*) OR (Деплой AND PROD*))"
+                  }
+                }
+              ]
+            }
+          },
+          "aggs": {
+            "hist": {
+              "date_histogram": {
+                "field": "@timestamp",
+                "interval": "1w",
+                "time_zone": "Europe/Moscow"
+              },
+              "aggs": {
+                "squad": {
+                  "terms": {
+                    "field": "squad_code.keyword",
+                    "size": 10000
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "format": {
+        "type": "json",
+        "property": "aggregations.hist.buckets"
+      },
+      "transform": [
+        {
+          "type": "flatten",
+          "fields": ["squad.buckets"],
+          "as": ["squad"]
+        },
+// отсекаем команды не в трайбе на сегодня
+        {
+          "type": "filter",
+          "expr": "indexof(domain('x0'), datum.squad.key) >= 0"
+        },
+// отсекаем команды в исключениях
+        {
+          "type": "filter",
+          "expr": "indexof(domain('scale_tribe_ad_prod_rest'), datum.squad.key) < 0"
+        },
+        {
+          "type": "aggregate",
+          "fields": ["squads.key"],
+          "ops": ["count"],
+          "as": ["c"],
+          "groupby": ["key"]
+        },
+        {
+          "type": "formula",
+          "expr": "round(datum.c/(n_of_squads - tribe_ad_prod_restrictors)*100)",
+          "as": "d"
+        },
+        {
+          "type": "formula",
+          "expr": "'Auto Deploy PROD'",
+          "as": "type"
+        }
+      ]
+    }  
+  ],
+  
+  "marks": [
+// Bitbucket Activity текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[0]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// Bitbucket Activity заливка 
+    {
+      "type": "rect",
+      "from": {"data": "bitbucket_activity"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// Bitbucket Activity подписи
+    {
+      "type": "text",
+      "from": {"data": "bitbucket_activity"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// Auto Build текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[1]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// Auto Build заливка
+    {
+      "type": "rect",
+      "from": {"data": "auto_build"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// Auto Build подписи
+    {
+      "type": "text",
+      "from": {"data": "auto_build"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// UT текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[4]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// UT заливка
+    {
+      "type": "rect",
+      "from": {"data": "unit_testing"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// UT подписи
+    {
+      "type": "text",
+      "from": {"data": "unit_testing"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"signal": "datum.d + '%'"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// Auto Deploy текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[2]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// Auto Deploy заливка
+    {
+      "type": "rect",
+      "from": {"data": "auto_deploy"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// Auto Deploy подписи
+    {
+      "type": "text",
+      "from": {"data": "auto_deploy"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// Auto Testing текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[3]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// Auto Testing заливка
+    {
+      "type": "rect",
+      "from": {"data": "auto_testing"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// Auto Testing подписи
+    {
+      "type": "text",
+      "from": {"data": "auto_testing"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// AD ST текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[5]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// AD ST заливка
+    {
+      "type": "rect",
+      "from": {"data": "auto_deploy_st"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// AD ST подписи
+    {
+      "type": "text",
+      "from": {"data": "auto_deploy_st"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// AT ST текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[6]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// AT ST заливка
+    {
+      "type": "rect",
+      "from": {"data": "auto_test_st"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// AT ST подписи
+    {
+      "type": "text",
+      "from": {"data": "auto_test_st"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// AD IFT текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[7]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// AD IFT заливка
+    {
+      "type": "rect",
+      "from": {"data": "auto_deploy_ift"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// AD IFT подписи
+    {
+      "type": "text",
+      "from": {"data": "auto_deploy_ift"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// AT IFT текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[8]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// AT IFT заливка
+    {
+      "type": "rect",
+      "from": {"data": "auto_test_ift"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// AT IFT подписи 
+    {
+      "type": "text",
+      "from": {"data": "auto_test_ift"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// AD UAT текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[9]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// AD UAT заливка
+    {
+      "type": "rect",
+      "from": {"data": "auto_deploy_uat"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// AD UAT подписи 
+    {
+      "type": "text",
+      "from": {"data": "auto_deploy_uat"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// AT UAT текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[10]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// AT UAT заливка
+    {
+      "type": "rect",
+      "from": {"data": "auto_test_uat"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// AT UAT подписи 
+    {
+      "type": "text",
+      "from": {"data": "auto_test_uat"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    },
+// AD PROD текст 'Нет данных' по умолчанию при отсутствии данных
+    {
+     "comment": "Текст по умолчания при отсутствии данных",
+      "type": "text",
+      "from": {"data": "default_time_step"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type[11]) + y_step/2"
+          },
+          "fill": {"value": "#7F2704"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {"value": "Нет данных"},
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 10}
+        }
+      }
+    },
+// AD PROD заливка
+    {
+      "type": "rect",
+      "from": {"data": "auto_deploy_prod"},
+      "encode": {
+        "update": {
+          "x": {"scale": "x", "field": "key"},
+          "width": {"scale": "x", "band": true},
+          "y": {"scale": "y", "field": "type"},
+          "height": {"scale": "y", "band": true},
+          "fill": {"scale": "color", "field": "d"}
+        }
+      }
+    },
+// AD PROD подписи
+    {
+      "type": "text",
+      "from": {"data": "auto_deploy_prod"},
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "x_step*indexof(domain('x'), datum.key) + x_step/2"
+          },
+          "y": {
+            "signal": "y_step*indexof(domain('y'), datum.type) + y_step/2"
+          },
+          "fill": {"scale": "color_number", "field": "d"},
+          "align": {"value": "center"},
+          "baseline": {"value": "middle"},
+          "text": {
+            "signal": "datum.d + '%'"
+          },
+          "font": {
+            "value": "Segoe UI, Helvetica, Open Sans, Arial"
+          },
+          "fontSize": {"value": 14}
+        }
+      }
+    }
+  ],
+  
+  "signals": [
+    {"name": "1", "update1": "warn(data('auto_deploy_prod'))"},
+    {"name": "2", "update1": "warn(domain('x0'))"},    
+    {"name": "n_of_squads", "update": "data('squad_code').length"},
+    {"name": "x_step", "update": "width/domain('x').length"},
+    {"name": "y_step", "update": "height/domain('y').length"},
+// переменные по исключениям для выбранного трайба
+    {
+      "name": "tribe_bb_restrictors",
+      "update": "data('tribe_bb_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ab_restrictors",
+      "update": "data('tribe_ab_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ad_restrictors",
+      "update": "data('tribe_ad_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_at_restrictors",
+      "update": "data('tribe_at_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ut_restrictors",
+      "update": "data('tribe_ut_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ad_st_restrictors",
+      "update": "data('tribe_ad_st_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_at_st_restrictors",
+      "update": "data('tribe_at_st_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ad_ift_restrictors",
+      "update": "data('tribe_ad_ift_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_at_ift_restrictors",
+      "update": "data('tribe_at_ift_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ad_uat_restrictors",
+      "update": "data('tribe_ad_uat_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_at_uat_restrictors",
+      "update": "data('tribe_at_uat_rest_count')[0].c"
+    },
+    {
+      "name": "tribe_ad_prod_restrictors",
+      "update": "data('tribe_ad_prod_rest_count')[0].c"
+    }
+  ],
+  
+  "scales": [
+    {
+      "name": "x0",
+      "type": "band",
+      "domain": {"data": "squad_code", "field": "key", "sort": true},
+      "range": [0, {"signal": "width"}],
+      "paddingInner": 0.1,
+      "paddingOuter": 0.05
+    },
+    {
+      "name": "x",
+      "type": "band",
+      "domain": {
+        "fields": [
+          {
+            "data": "default_time_step",
+            "field": "key",
+            "sort": true
+          }
+        ]
+      },
+      "range": [0, {"signal": "width"}],
+      "paddingInner": 0,
+      "paddingOuter": 0
+    },
+    {
+      "name": "y",
+      "type": "band",
+      "domain": {"data": "source", "field": "a"},
+      "range": [0, {"signal": "height"}],
+      "paddingInner": 0.01,
+      "paddingOuter": 0.01
+    },
+    {
+      "name": "color",
+      "type": "sequential",
+      "domain": [0, 100],
+      "range": ["#fff", "#272727"],
+      "nice": false,
+      "zero": false
+    },
+    {
+      "name": "color_number",
+      "type": "sequential",
+      "domain": [10, 30],
+      "range": "heatmap_numbers",
+      "reverse": true
+    },
+    {
+      "name": "scale_tribe_bb_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_bb_rest",
+        "field": "tribe_bb_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ab_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ab_rest",
+        "field": "tribe_ab_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ad_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ad_rest",
+        "field": "tribe_ad_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_at_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_at_rest",
+        "field": "tribe_at_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ut_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ut_rest",
+        "field": "tribe_ut_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ad_st_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ad_st_rest",
+        "field": "tribe_ad_st_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_at_st_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_at_st_rest",
+        "field": "tribe_at_st_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ad_ift_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ad_ift_rest",
+        "field": "tribe_ad_ift_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_at_ift_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_at_ift_rest",
+        "field": "tribe_at_ift_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ad_uat_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ad_uat_rest",
+        "field": "tribe_ad_uat_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_at_uat_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_at_uat_rest",
+        "field": "tribe_at_uat_squads_rest.key",
+        "sort": true
+      }
+    },
+    {
+      "name": "scale_tribe_ad_prod_rest",
+      "type": "band",
+      "domain": {
+        "data": "tribe_ad_prod_rest",
+        "field": "tribe_ad_prod_squads_rest.key",
+        "sort": true
+      }
+    }
+  ],
+  
+  "axes": [
+    {
+      "scale": "x",
+      "labelOverlap": true,
+      "orient": "bottom",
+      "zindex": 1,
+      "encode": {
+        "labels": {
+          "update": {
+            "text": {
+              "signal": "timeFormat(datum.value, '%d.%m')"
+            },
+            "fill": {"value": "#999"},
+            "align": {"value": "center"},
+            "baseline": {"value": "top"},
+            "fontSize": {"value": 13},
+            "font": {
+              "value": "Segoe UI, Helvetica, Open Sans, Arial"
+            }
+          }
+        }
+      }
+    },
+    {
+      "scale": "y",
+      "orient": "left",
+      "zindex": 1,
+      "encode": {
+        "labels": {
+          "update": {
+            "fontSize": {"value": 13},
+            "font": {
+              "value": "Segoe UI, Helvetica, Open Sans, Arial"
+            },
+            "fill": {"value": "#999"},
+            "limit": 200
+          }
+        }
+      }
+    }
+  ],
+  
+  "legends": [
+    {
+      "fill": "color",
+      "title": "Процент здоровых команд",
+      "type": "gradient",
+      "orient": "bottom",
+      "encode": {
+        "title": {
+          "update": {
+            "fontSize": {"value": 13},
+            "font": {
+              "value": "Segoe UI Light, Open Sans, Arial"
+            },
+            "fill": {"value": "#999"}
+          }
+        },
+        "labels": {
+          "interactive": true,
+          "update": {
+"limit":{
+"value": 2000
+},
+            "fontSize": {"value": 13},
+            "font": {"value": "Segoe UI, Open Sans, Arial"},
+            "fill": {"value": "#999"}
+          }
+        }
+      }
+    }
+  ],
+  
+  "config": {
+    "style": {"cell": {"stroke": "transparent"}},
+    "range": {
+      "heatmap": {"scheme": "greys"},
+      "heatmap_numbers": {"scheme": "oranges"}
+    },
+    "title": {
+      "fontSize": 20,
+      "offset": "15",
+      "fontWeight": "normal",
+      "font": {
+        "value": "Segoe UI Light, Helvetica, Open Sans, Arial"
+      },
+      "color": {"value": "#eee"}
+    },
+    "axis": {
+      "titleColor": "#ddd",
+      "titleFontWeight": "normal",
+      "domainColor": "#444",
+      "tickColor": "#444",
+      "titleLimit": "300",
+      "titleFont": {
+        "value": "Segoe UI Light, Helvetica, Open Sans, Arial"
+      }
+    },
+    "group": {"fill": "white"}
+  }
+}
